@@ -1,0 +1,55 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        if: runner.os == 'Linux'
+        run: test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
+      - run: go vet ./...
+      - run: go test ./...
+
+  # the embedded skills must be exactly the ones of the pinned tag of
+  # rapibase/skills (skills.ref): the CLI and its skills ship together
+  skills-in-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - id: ref
+        run: echo "ref=$(tr -d '[:space:]' < skills.ref)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: rapibase/skills
+          ref: ${{ steps.ref.outputs.ref }}
+          path: .skills
+      - run: go run ./tools/syncskills -from .skills
+      - run: git diff --exit-code -- internal/skills/files ':(exclude)internal/skills/files/SOURCE'
+
+  npm-shim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --check npm/rapibase/bin/rapibase.js && node --check npm/build.mjs

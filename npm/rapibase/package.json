@@ -1,0 +1,28 @@
+{
+  "name": "rapibase",
+  "version": "0.0.0-dev",
+  "description": "The Rapibase CLI: log in, create or link a project, write .env, connect your coding agent and deploy, from the terminal.",
+  "keywords": ["rapibase", "backend", "baas", "postgres", "cli", "mcp", "agents", "claude-code", "cursor", "codex"],
+  "homepage": "https://rapibase.com/cli",
+  "bugs": "https://github.com/rapibase/cli/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rapibase/cli.git"
+  },
+  "license": "MIT",
+  "bin": {
+    "rapibase": "bin/rapibase.js"
+  },
+  "files": ["bin/rapibase.js", "README.md", "LICENSE"],
+  "engines": {
+    "node": ">=18"
+  },
+  "optionalDependencies": {
+    "@rapibase/cli-linux-x64": "0.0.0-dev",
+    "@rapibase/cli-linux-arm64": "0.0.0-dev",
+    "@rapibase/cli-darwin-x64": "0.0.0-dev",
+    "@rapibase/cli-darwin-arm64": "0.0.0-dev",
+    "@rapibase/cli-win32-x64": "0.0.0-dev",
+    "@rapibase/cli-win32-arm64": "0.0.0-dev"
+  }
+}

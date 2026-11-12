@@ -1,0 +1,56 @@
+# GoReleaser builds the binaries, the GitHub Release and the checksums.
+# npm publishing runs after it in .github/workflows/release.yml with
+# npm/build.mjs, which reads dist/artifacts.json (spec §10.2 and §10.5).
+version: 2
+
+project_name: rapibase
+
+before:
+  hooks:
+    - go mod verify
+    - go test ./...
+
+builds:
+  - id: rapibase
+    main: .
+    binary: rapibase
+    env:
+      - CGO_ENABLED=0 # static: the Linux binary also runs on Alpine (musl)
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/rapibase/cli/internal/build.Version={{ .Version }}
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: default
+    formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "rapibase_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^test:"
+      - "^ci:"
+
+release:
+  github:
+    owner: rapibase
+    name: cli
+  prerelease: auto
+  draft: false
+  replace_existing_artifacts: true # a re-run of a failed release uploads again

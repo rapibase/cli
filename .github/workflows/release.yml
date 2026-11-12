@@ -1,0 +1,89 @@
+name: release
+
+# A tag v* builds the binaries (GoReleaser), creates the GitHub Release with
+# checksums and publishes the npm packages with provenance (spec §10.5).
+#
+# npm auth:
+#   - Trusted publishing (OIDC), no secret: each of the 7 packages lists this
+#     repo, release.yml and the `npm` environment as its trusted publisher.
+#   - NPM_TOKEN in the `npm` environment, only for the first release: a trusted
+#     publisher can only be added to a package that already exists. npm tries
+#     OIDC first and falls back to the token; delete it once the trusted
+#     publishers are set (README, "Releasing").
+#
+# Re-running a failed release is safe: GoReleaser replaces its assets (the
+# build is reproducible) and versions already on npm are skipped.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # GitHub Release
+  id-token: write # npm trusted publishing and provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest # trusted publishing only works on GitHub-hosted runners
+    environment: npm # must match the trusted publishers; NPM_TOKEN lives here
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # the embedded skills must match the pinned tag before shipping
+      - id: ref
+        run: echo "ref=$(tr -d '[:space:]' < skills.ref)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: rapibase/skills
+          ref: ${{ steps.ref.outputs.ref }}
+          path: .skills
+      - run: go run ./tools/syncskills -from .skills
+      - run: git diff --exit-code -- internal/skills/files ':(exclude)internal/skills/files/SOURCE'
+      - run: rm -rf .skills && git checkout -- internal/skills/files/SOURCE
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24 # trusted publishing needs npm >= 11.5.1 and Node >= 22.14
+          registry-url: https://registry.npmjs.org
+      - run: node npm/build.mjs "${GITHUB_REF_NAME}" dist
+      - name: Publish to npm (platforms first, then the shim)
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          node -e '
+            const v = process.argv[1]
+            const [a, b, c] = v.split(".").map(Number)
+            if (a < 11 || (a === 11 && (b < 5 || (b === 5 && c < 1)))) {
+              console.error(`::error::npm ${v}: trusted publishing needs npm >= 11.5.1`)
+              process.exit(1)
+            }' "$(npm --version)"
+          if [ -n "$NPM_TOKEN" ]; then
+            export NODE_AUTH_TOKEN="$NPM_TOKEN"
+            echo "npm auth: trusted publishing, falling back to NPM_TOKEN"
+          else
+            echo "npm auth: trusted publishing"
+          fi
+
+          tag=latest
+          case "${GITHUB_REF_NAME}" in *-*) tag=next ;; esac
+          while read -r dir; do
+            [ -n "$dir" ] || continue
+            spec=$(node -p 'const p = require(process.argv[1]); p.name + "@" + p.version' "$dir/package.json")
+            if npm view "$spec" version >/dev/null 2>&1; then
+              echo "$spec is already on npm, skipping"
+              continue
+            fi
+            (cd "$dir" && npm publish --provenance --access public --tag "$tag")
+          done < npm/out/order.txt
