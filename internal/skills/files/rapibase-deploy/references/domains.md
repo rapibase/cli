@@ -19,10 +19,11 @@ Change domains only when the person asks for it. The project's custom domain is 
 - **The project's subdomain or custom domain:** in the console (`rapibase open console` → the project's
   domain settings). Give the person the exact hostname to enter. A domain under Rapibase Cloud's own
   domain is refused (use your own).
-- **A service's custom domain:** the MCP tool `update_service` with `custom_domain` (a full hostname like
-  `api.<your-domain>`; `""` removes it), or `create_service_upload` with `custom_domain` on a deploy —
-  ONLY if the person gave the domain. `update_service` also switches `subdomain` and `path`; only the
-  fields you pass change.
+- **A service's custom domain:** `rapibase services update <name> --custom-domain <hostname>` (a full
+  hostname like `api.<your-domain>`; `--custom-domain ""` removes it), or `--custom-domain` on
+  `rapibase services deploy` — ONLY if the person gave the domain. `services update` also switches
+  `--subdomain` and `--path`; only the flags you pass change. MCP: `update_service` with `custom_domain`,
+  `subdomain` and `path`, or `create_service_upload` with `custom_domain`.
 
 ## DNS: what the person adds at their DNS provider
 

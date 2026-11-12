@@ -36,7 +36,8 @@ func (a *app) sqlCmd() *cobra.Command {
 		Args:  cobra.MaximumNArgs(1),
 		Example: examples(
 			`rapibase sql "select count(*) from orders"`,
-			`rapibase sql "select * from orders where status = $1" --param paid`,
+			// comillas simples: en bash/zsh "$1" se expande a vacío
+			`rapibase sql 'select * from orders where status = $1' --param paid`,
 			"rapibase sql --file migrations/001_init.sql --timeout 300",
 			"cat seed.sql | rapibase sql -",
 		),
@@ -224,10 +225,11 @@ func (a *app) apiCmd() *cobra.Command {
 		Long:  i18n.T("cmd.api.long"),
 		Args:  cobra.RangeArgs(1, 2),
 		Example: examples(
-			`rapibase api get "/api/v1/rest/products?limit=5"`,
+			`rapibase api get "/api/v1/rest/products?page_size=5"`,
 			`rapibase api post /api/v1/rest/products --data '{"name":"Mate","price":10}'`,
-			"rapibase api post /api/v1/storage/photos/upload -F file=@cat.png -F path=pets/cat.png",
-			"rapibase api get /api/v1/storage/photos/object/pets/cat.png -o cat.png",
+			// path es la carpeta dentro del bucket; el nombre sale del archivo
+			"rapibase api post /api/v1/storage/photos/upload -F file=@cat.png -F path=pets/",
+			"rapibase api get /api/v1/storage/photos/pets/cat.png -o cat.png",
 		),
 	}
 	cmd.Flags().StringVarP(&method, "method", "X", "", i18n.T("flag.api_method"))

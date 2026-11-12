@@ -67,7 +67,7 @@ enable one with `CREATE EXTENSION IF NOT EXISTS <name>`.
 | `deploy_functions` | `rapibase functions deploy` |
 | `get_config`, `set_config` | `rapibase config get`, `rapibase config set KEY=VALUE` |
 | `restart_project` | `rapibase restart` |
-| `get_logs` | `rapibase logs [--service <name>]` |
+| `get_logs` | `rapibase logs [--service <name> \| --container db\|storage]` |
 | `list_deploys`, `create_site_upload`, `activate_deploy` | `rapibase deploys`, `rapibase deploy`, `rapibase deploys activate <release_id>` |
 | `get_services`, `create_service_upload`, `restart_service`, `delete_service` | `rapibase services`, `rapibase services deploy`, `rapibase services restart`, `rapibase services rm` |
 | `update_service`, `activate_service_release` | `rapibase services update <name> --path …`, `rapibase services activate <name> <release_id>` |

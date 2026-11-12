@@ -525,7 +525,9 @@ func (a *app) logsCmd() *cobra.Command {
 			}
 			return lines, nil
 		}
-		lines, err := fetch(tail)
+		// the server answers 200 lines to anything above 2000: ask for the most
+		// it gives instead of silently getting less
+		lines, err := fetch(min(tail, 2000))
 		if err != nil {
 			return nil, err
 		}

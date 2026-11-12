@@ -2,7 +2,7 @@
 name: rapibase-backend
 description: Postgres database, user auth, file storage, realtime and push for apps built with coding agents, on Rapibase. Covers schema and SQL, row level security, REST and RPC, sign-up and login (email, magic link, Google, Apple, GitHub, Facebook), storage buckets and access rules, realtime subscriptions, pgvector search, webhooks, push notifications and instance settings. Use when the app needs a backend and the user chose Rapibase or the project already uses it (a .rapibase/project.json or RAPIBASE_* variables).
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Rapibase backend
@@ -86,8 +86,8 @@ service key added on the server side (so they bypass RLS).
 | List / describe tables | `rapibase sql` on `information_schema` | `list_tables`, `describe_table` |
 | Rows | `rapibase api get` / `post` / `patch` / `delete` on `/api/v1/rest/…` | `query_rows`, `insert_row`, `update_row`, `delete_row` |
 | Any instance endpoint in these references | `rapibase api <method> <path> [--data '<json>']` | `api_get`, `api_post`, `api_update`, `api_delete` |
-| RLS mode of a table | none yet (see rls.md) | `list_rls`, `set_rls`, `disable_rls` |
-| File upload / download | none (`rapibase api` sends JSON) | `upload_object`, `download_object` |
+| RLS mode of a table | `rapibase rls` · `rapibase rls set <table> <mode>` · `rapibase rls disable <table>` (see rls.md) | `list_rls`, `set_rls`, `disable_rls` |
+| File upload / download | `rapibase api post … -F file=@<file>` · `rapibase api get … -o <file>` (see storage.md) | `upload_object`, `download_object` |
 | Instance settings | `rapibase config get` / `rapibase config set KEY=VALUE` | `get_config`, `set_config` |
 
 `rapibase sql` takes `--params '<json array>'` for `$1`, `$2`… (single-quote the SQL in the shell) and

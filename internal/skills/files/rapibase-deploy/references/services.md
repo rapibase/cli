@@ -11,8 +11,8 @@ explicit request.
   on its own subdomain `<service>-<project subdomain>`, on a custom domain ([domains.md](domains.md)) or on
   several at once. With an empty route and no subdomain or domain it is **internal only** (a worker that
   only the other services call, at `<service>:8080` over plain HTTP). The route changes without
-  redeploying with the MCP tool `update_service` (only when the person asks for it), or on the next
-  `rapibase services deploy … --path`. The service receives the full path (mounted at `/api`, it gets
+  redeploying with `rapibase services update <name> --path …` (MCP: `update_service`; only when the
+  person asks for it), or on the next `rapibase services deploy … --path`. The service receives the full path (mounted at `/api`, it gets
   `/api/orders`, not `/orders`). The instance's reserved routes never reach it.
 - **It must listen on** `0.0.0.0:$PORT` (8080 today) and answer HTTP.
 - **It receives in its environment:** `DATABASE_URL` (the project's Postgres over the internal network),

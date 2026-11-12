@@ -13,7 +13,7 @@ var operateMessages = map[string][3]string{
 		"app (por defecto), db o storage",
 		"app (padrão), db ou storage",
 	},
-	"flag.tail":   {"number of lines", "cantidad de líneas", "quantidade de linhas"},
+	"flag.tail":   {"number of lines, up to 2000", "cantidad de líneas, hasta 2000", "quantidade de linhas, até 2000"},
 	"flag.follow": {"keep showing new lines", "sigue mostrando las líneas nuevas", "continua mostrando as linhas novas"},
 	"logs.bad_container": {
 		"unknown container %q: use app, db or storage (or --service <name>)",

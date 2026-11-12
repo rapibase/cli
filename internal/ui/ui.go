@@ -255,6 +255,9 @@ func (u *UI) Input(prompt, def string, valid func(string) string) (string, error
 	}
 }
 
+// SetInput replaces stdin as the source of the answers (tests).
+func (u *UI) SetInput(r io.Reader) { u.in = bufio.NewReader(r) }
+
 // Confirm asks a yes/no question.
 func (u *UI) Confirm(prompt string, def bool) (bool, error) {
 	hint := "y/N"

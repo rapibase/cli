@@ -153,7 +153,8 @@ func (a *app) skillCmd() *cobra.Command {
 		Example: examples("rapibase skill update"),
 	}
 	update.RunE = a.run(func(cmd *cobra.Command, _ []string) (any, error) {
-		res, err := agents.UpdateSkills(a.root())
+		root := a.root()
+		res, err := agents.UpdateSkills(root)
 		if err != nil {
 			return nil, err
 		}
@@ -162,6 +163,12 @@ func (a *app) skillCmd() *cobra.Command {
 		}
 		switch {
 		case len(res.Updated) == 0 && len(res.Current) == 0:
+			// only the old single skill: updating it means moving to the four
+			// new ones, with the same confirmation as `skill install`
+			if old := agents.FindOldSkill(root); len(old) > 0 {
+				list, sc := oldSkillTargets(root, old)
+				return a.installSkills(list, sc, false)
+			}
 			a.ui.Println(i18n.T("skill.none_installed"))
 		case len(res.Updated) == 0:
 			a.ui.Success(i18n.T("skill.up_to_date", len(res.Current)))
@@ -176,6 +183,30 @@ func (a *app) skillCmd() *cobra.Command {
 // `rapibase` skill and prints what happened.
 func (a *app) installSkills(list []agents.Agent, sc agents.Scope, force bool) (map[string]any, error) {
 	root := a.root()
+	// the old skill: in the repo always; in the home folder only when the new
+	// ones also go there, so other repos keep a guide. Replacing it deletes
+	// files the person may have edited, so it is confirmed first (spec §9.1):
+	// a question with a TTY, --yes without one. Without --yes nothing is
+	// installed either, so two guides that disagree never end up side by side.
+	var old []agents.OldSkill
+	for _, o := range agents.FindOldSkill(root) {
+		inRepo := strings.HasPrefix(filepath.Clean(o.Path), filepath.Clean(root)+string(filepath.Separator))
+		if inRepo || sc == agents.ScopeUser {
+			old = append(old, o)
+		}
+	}
+	replaceOld := len(old) > 0
+	if replaceOld && !a.flags.yes {
+		if !a.ui.Interactive {
+			return nil, a.missing(i18n.T("skill.old_needs_yes", len(old)), "--yes").With("old_skill", old)
+		}
+		ok, err := a.ui.Confirm(i18n.T("skill.old_confirm", len(old)), true)
+		if err != nil {
+			return nil, err
+		}
+		replaceOld = ok
+	}
+
 	results := []*agents.SkillResult{}
 	done := map[string]bool{}
 	for _, x := range list {
@@ -198,26 +229,50 @@ func (a *app) installSkills(list []agents.Agent, sc agents.Scope, force bool) (m
 			a.ui.Note(i18n.T("skill.git_excluded"))
 		}
 	}
-	// the old skill: in the repo always; in the home folder only when the new
-	// ones also go there, so other repos keep a guide
-	var old []agents.OldSkill
-	for _, o := range agents.FindOldSkill(root) {
-		inRepo := strings.HasPrefix(filepath.Clean(o.Path), filepath.Clean(root)+string(filepath.Separator))
-		if inRepo || sc == agents.ScopeUser {
-			old = append(old, o)
-		}
-	}
-	if len(old) > 0 {
+	out := map[string]any{"skills": results}
+	switch {
+	case replaceOld:
 		if err := agents.RemoveOldSkill(old); err != nil {
 			return nil, err
 		}
 		a.ui.Note(i18n.T("skill.old_replaced", len(old)))
-	}
-	out := map[string]any{"skills": results}
-	if len(old) > 0 {
 		out["old_skill_removed"] = old
+	case len(old) > 0:
+		// the person said no: theirs to keep, but they should know
+		a.ui.Warn(i18n.T("skill.old_kept", len(old)))
+		out["old_skill_kept"] = old
 	}
 	return out, nil
+}
+
+// oldSkillTargets says where the four skills go when only the old single
+// skill is installed: the same agents, in the repo unless every old copy
+// lives in the home folder.
+func oldSkillTargets(root string, old []agents.OldSkill) ([]agents.Agent, agents.Scope) {
+	seen := map[agents.Agent]bool{}
+	var list []agents.Agent
+	add := func(x agents.Agent) {
+		if !seen[x] {
+			seen[x] = true
+			list = append(list, x)
+		}
+	}
+	sc := agents.ScopeUser
+	for _, o := range old {
+		p := filepath.ToSlash(o.Path)
+		switch {
+		case strings.Contains(p, "/.claude/"):
+			add(agents.Claude)
+		case strings.Contains(p, "opencode/"):
+			add(agents.OpenCode)
+		default: // rapibase.md and its AGENTS.md line
+			add(agents.Other)
+		}
+		if strings.HasPrefix(filepath.Clean(o.Path), filepath.Clean(root)+string(filepath.Separator)) {
+			sc = agents.ScopeProject
+		}
+	}
+	return list, sc
 }
 
 // --- mcp ---
@@ -394,9 +449,23 @@ func (a *app) initCmd() *cobra.Command {
 			if len(list) > 0 && !noSkill {
 				res, err := a.installSkills(list, sc, false)
 				if err != nil {
-					return nil, err
+					e := cerr.As(err)
+					if e.Code != cerr.MissingFlag {
+						return nil, err
+					}
+					// the old skill needs --yes: the project is already made and
+					// linked, so say it and finish the rest instead of failing here
+					a.ui.Warn(e.Message)
+					a.ui.Note(i18n.T("skill.old_retry"))
+					out["skill_error"] = map[string]any{"code": e.Code, "message": e.Message, "hint": "rapibase skill install --yes"}
+				} else {
+					out["skills"] = res["skills"]
+					for _, k := range []string{"old_skill_removed", "old_skill_kept"} {
+						if v, ok := res[k]; ok {
+							out[k] = v
+						}
+					}
 				}
-				out["skills"] = res["skills"]
 			}
 			if len(list) > 0 && !noMCP {
 				out["mcp"] = a.addMCP(list, sc, p.Slug)

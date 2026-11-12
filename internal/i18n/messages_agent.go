@@ -87,6 +87,26 @@ var agentMessages = map[string][3]string{
 		"Se reemplazó el skill viejo rapibase (%d lugar(es))",
 		"Substituído o skill antigo rapibase (%d lugar(es))",
 	},
+	"skill.old_confirm": {
+		"The old rapibase skill is installed (%d place(s)). Replace it with the new skills? Edits made to it are lost",
+		"Está instalado el skill viejo rapibase (%d lugar(es)). ¿Lo reemplazo por los skills nuevos? Se pierden los cambios que le hayas hecho",
+		"O skill antigo rapibase está instalado (%d lugar(es)). Substituí-lo pelos skills novos? As alterações feitas nele se perdem",
+	},
+	"skill.old_needs_yes": {
+		"The old rapibase skill is installed (%d place(s)); replacing it deletes it. Run again with --yes",
+		"Está instalado el skill viejo rapibase (%d lugar(es)); reemplazarlo lo borra. Vuelve a correrlo con --yes",
+		"O skill antigo rapibase está instalado (%d lugar(es)); substituí-lo o apaga. Rode de novo com --yes",
+	},
+	"skill.old_kept": {
+		"Kept the old rapibase skill (%d place(s)): the agent will see both guides until you remove it",
+		"Se conservó el skill viejo rapibase (%d lugar(es)): el agente va a ver las dos guías hasta que lo borres",
+		"Mantido o skill antigo rapibase (%d lugar(es)): o agente vai ver os dois guias até você apagá-lo",
+	},
+	"skill.old_retry": {
+		"The skills were not installed. To replace the old one: rapibase skill install --yes",
+		"No se instalaron los skills. Para reemplazar el viejo: rapibase skill install --yes",
+		"Os skills não foram instalados. Para substituir o antigo: rapibase skill install --yes",
+	},
 
 	// --- mcp ---
 	"cmd.mcp.short": {"The Rapibase MCP for your agent", "El MCP de Rapibase para tu agente", "O MCP do Rapibase para o seu agente"},

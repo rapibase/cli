@@ -2,7 +2,7 @@
 name: rapibase-deploy
 description: Publish a Rapibase project - the static frontend (built-in hosting with releases and one-step rollback), own services in any language (Go, Rust, Zig, Python, Node, Bun) on the same domain, custom domains, and automatic deploys from GitHub Actions. Use only when the user explicitly asks to deploy, publish or roll back a Rapibase project, to run their own backend service next to it, or to set up its domain or CI.
 metadata:
-  version: "0.1.0"
+  version: "0.1.1"
 ---
 
 # Rapibase deploy
@@ -78,7 +78,7 @@ The same rule covers own services (`rapibase services deploy`) and rollbacks.
 | Publish the frontend, list releases, roll back | `rapibase deploy [dir]`, `rapibase deploys`, `rapibase deploys activate <release_id>` | [references/site.md](references/site.md) |
 | Deploy on every `git push` | workflow with `npx rapibase@latest deploy` | [references/github-actions.md](references/github-actions.md) |
 | Run your own server (Go, Rust, Python, Node, Bun…) | `rapibase services`, `rapibase services deploy <name> [dir]` | [references/services.md](references/services.md) |
-| Custom domain, service subdomain, DNS | console / MCP `update_service` | [references/domains.md](references/domains.md) |
+| Custom domain, service subdomain, DNS | console / `rapibase services update` (MCP `update_service`) | [references/domains.md](references/domains.md) |
 
 ## Quick reference
 
