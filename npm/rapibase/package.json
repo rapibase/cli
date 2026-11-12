@@ -3,7 +3,7 @@
   "version": "0.0.0-dev",
   "description": "The Rapibase CLI: log in, create or link a project, write .env, connect your coding agent and deploy, from the terminal.",
   "keywords": ["rapibase", "backend", "baas", "postgres", "cli", "mcp", "agents", "claude-code", "cursor", "codex"],
-  "homepage": "https://rapibase.com/cli",
+  "homepage": "https://github.com/rapibase/cli#readme",
   "bugs": "https://github.com/rapibase/cli/issues",
   "repository": {
     "type": "git",

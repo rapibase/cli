@@ -109,7 +109,8 @@ func rootHelp(w io.Writer, root *cobra.Command) {
 	fmt.Fprintln(w, "  npx rapibase@latest init")
 	fmt.Fprintln(w, "  rapibase deploy ./dist")
 	fmt.Fprintln(w, "  rapibase env pull")
-	fmt.Fprintf(w, "\n%s rapibase.com/cli\n", i18n.T("help.more"))
+	// the /cli page on rapibase.com does not exist yet (spec L10)
+	fmt.Fprintf(w, "\n%s github.com/rapibase/cli\n", i18n.T("help.more"))
 }
 
 // keySuffix maps "projects create" → ".create", "deploy [dir]" → "".

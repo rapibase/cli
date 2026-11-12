@@ -5,8 +5,8 @@ name: release
 #
 # npm auth:
 #   - Trusted publishing (OIDC), no secret: each of the 7 packages lists this
-#     repo, release.yml and the `npm` environment as its trusted publisher.
-#   - NPM_TOKEN in the `npm` environment, only for the first release: a trusted
+#     repo, release.yml and the `NPM_TOKEN` environment as its trusted publisher.
+#   - The NPM_TOKEN secret of that environment, only for the first release: a trusted
 #     publisher can only be added to a package that already exists. npm tries
 #     OIDC first and falls back to the token; delete it once the trusted
 #     publishers are set (README, "Releasing").
@@ -24,7 +24,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest # trusted publishing only works on GitHub-hosted runners
-    environment: npm # must match the trusted publishers; NPM_TOKEN lives here
+    # only v* tags and a required reviewer; the trusted publishers name it too
+    environment: NPM_TOKEN
     steps:
       - uses: actions/checkout@v4
         with:

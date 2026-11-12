@@ -112,9 +112,10 @@ embedded in the binary, so the CLI and its skills always match.
 npm auth is trusted publishing (no secret), which can only be set on packages that already exist:
 
 - **First release:** a granular npm token (read and write on `rapibase` and the `@rapibase` org,
-  bypass 2FA, short expiry) as the `NPM_TOKEN` secret of the `npm` environment of this repo.
+  bypass 2FA, short expiry) as the `NPM_TOKEN` secret of the `NPM_TOKEN` environment of this repo
+  (only `v*` tags, with a required reviewer).
 - **Right before the second one:** on each of the 7 packages, Settings → Trusted publishing → GitHub
-  Actions with `rapibase`, `cli`, `release.yml` and environment `npm`, allowing `npm publish`. Then
+  Actions with `rapibase`, `cli`, `release.yml` and environment `NPM_TOKEN`, allowing `npm publish`. Then
   delete the token and the secret, and set Publishing access to "Require two-factor authentication and
   disallow tokens". A new trusted publisher expires if it does not publish within 2 days.
 
