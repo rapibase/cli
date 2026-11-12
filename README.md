@@ -107,7 +107,9 @@ embedded in the binary, so the CLI and its skills always match.
 2. Push a `vX.Y.Z` tag here. The `release` workflow runs GoReleaser (binaries, checksums, GitHub
    Release) and publishes `rapibase` plus one `@rapibase/cli-<os>-<arch>` package per platform to npm,
    with provenance. A tag with a `-` (`v0.2.0-rc.1`) goes to the `next` dist-tag. Re-running a failed
-   release is safe.
+   release is safe. The shim waits until npm serves the six platform packages, so `npx` never caches an
+   install without its binary.
+3. Each tag waits for the environment's reviewer: batch the changes and tag a complete version.
 
 npm auth is trusted publishing (no secret), which can only be set on packages that already exist:
 

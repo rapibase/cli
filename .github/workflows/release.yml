@@ -79,9 +79,33 @@ jobs:
 
           tag=latest
           case "${GITHUB_REF_NAME}" in *-*) tag=next ;; esac
+          platforms=()
           while read -r dir; do
             [ -n "$dir" ] || continue
             spec=$(node -p 'const p = require(process.argv[1]); p.name + "@" + p.version' "$dir/package.json")
+            if [ "${spec%@*}" = rapibase ]; then
+              # npm takes a minute or two to serve a new version. A shim that
+              # shows up before its binaries makes `npx rapibase@latest` cache
+              # an install without them, and it keeps failing until the person
+              # clears the npx cache. So the shim waits until all six are
+              # visible; after 10 minutes it gives up, and a re-run publishes
+              # only the shim (spec L15).
+              for i in $(seq 1 60); do
+                missing=""
+                for p in "${platforms[@]}"; do
+                  npm view "$p" version --prefer-online >/dev/null 2>&1 || missing="$missing $p"
+                done
+                [ -z "$missing" ] && break
+                echo "waiting for npm to serve:$missing"
+                sleep 10
+              done
+              if [ -n "$missing" ]; then
+                echo "::error::npm does not serve$missing yet: re-run this job to publish the shim"
+                exit 1
+              fi
+            else
+              platforms+=("$spec")
+            fi
             if npm view "$spec" version >/dev/null 2>&1; then
               echo "$spec is already on npm, skipping"
               continue
