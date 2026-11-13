@@ -95,6 +95,11 @@ func (a *app) sqlCmd() *cobra.Command {
 			if errors.As(err, &e) && e.Code == cerr.Forbidden && !readOnly && e.Str("hint") == "" {
 				e.With("hint", i18n.T("sql.read_hint"))
 			}
+			// --read with a statement that writes: the server's message names
+			// the MCP tool; from the terminal it's the same command without --read
+			if errors.As(err, &e) && readOnly && strings.Contains(e.Message, "(SQLSTATE 25006)") && e.Str("hint") == "" {
+				e.With("hint", i18n.T("sql.read_writes"))
+			}
 			return nil, err
 		}
 		var res struct {

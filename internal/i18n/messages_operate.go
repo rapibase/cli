@@ -73,6 +73,11 @@ var operateMessages = map[string][3]string{
 		"solo lectura: una sentencia que no puede escribir (sirve con una conexión de lectura)",
 		"somente leitura: uma instrução que não pode escrever (serve com uma conexão de leitura)",
 	},
+	"sql.read_writes": {
+		"it writes: run it without --read (needs write access)",
+		"escribe: córrelo sin --read (pide permiso de escritura)",
+		"escreve: rode sem --read (exige permissão de escrita)",
+	},
 	"sql.read_hint": {
 		"to only read, add --read",
 		"para solo leer, agrega --read",
