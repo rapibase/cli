@@ -43,6 +43,18 @@ func Version(name string) string {
 	return v
 }
 
+// SetVersion is the version of the embedded skills (they are released
+// together, so all four carry the same one). The CLI has its own version:
+// skills 0.1.x ship inside CLI 0.2.x.
+func SetVersion() string {
+	for _, n := range Names() {
+		if v := Version(n); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // Write copies an embedded skill to dest/<name>/, replacing what was there
 // (files of an older version that no longer exist are removed).
 func Write(dest, name string) error {

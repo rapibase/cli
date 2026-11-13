@@ -4,13 +4,15 @@ GitHub builds; Rapibase only receives the artifact. Set it up only when the pers
 exists, deploying this repo = `git push` to that branch (see "When to deploy" in SKILL.md).
 
 1. Ask the person to create a **deploy token** in the console (the project's Deploys tab;
-   `rapibase open console`) and to store it as a secret themselves, without pasting it into the chat:
+   `rapibase open console`, MCP: `get_project` → `console_url`) and to store it as a secret themselves, without pasting it into the chat:
    `gh secret set RAPIBASE_DEPLOY_TOKEN` (gh asks for the value at the keyboard). The token only serves to
    publish (what it reaches: "Tokens" below): NEVER put the SERVICE_KEY in GitHub.
 
 2. The project (not secret, you can set it yourself). With the deploy token it goes by its numeric id,
    the `project_id` in `.rapibase/project.json`. If that file is committed, the CLI already reads the id
-   from it and this step is optional; when set, `RAPIBASE_PROJECT` wins over the file.
+   from it and this step is optional; when set, `RAPIBASE_PROJECT` wins over the file. Without that file,
+   the id is `project_id` in MCP `get_project`, or the number at the end of `console_url` in
+   `rapibase status --json`.
 
 ```bash
 gh variable set RAPIBASE_PROJECT --body "<project_id from .rapibase/project.json>"

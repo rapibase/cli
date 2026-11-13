@@ -16,9 +16,10 @@ what to do and where.
 |---|---|---|---|
 | 0 | — | ok | |
 | 1 | `server_error`, `network` | unexpected error or no connection | retry once; if it persists, `rapibase status` and `rapibase logs` |
+| 1 | `sql_error`, `blocked`, `failed` | the command itself failed: the SQL, a deploy stopped by a check, a build or start that failed (carries `phase` and `log`) | read the message (and `log`): it says what failed; fix and run it again. Don't retry unchanged |
 | 2 | `usage`, `missing_flag`, `not_linked`, `project_not_found` | wrong usage, missing data, or the linked project no longer exists | the message lists the missing flags and the possible values (e.g. the projects). `not_linked`: `rapibase link <slug>` or `init`, asking which project if there are several; `project_not_found`: `rapibase link` |
 | 3 | `needs_login`, `session_expired` | no session, or the refresh expired | `npx rapibase@latest init --agent <agent> --json` (or `rapibase login`) and show the person the link |
-| 4 | `forbidden` | the connection doesn't reach the project or it is read-only for it | give the person the `action_url`; retry when they confirm. `rapibase sql` always needs write: to only read, use `rapibase tables`, `rapibase rls list` or `rapibase api get` |
+| 4 | `forbidden` | the connection doesn't reach the project or it is read-only for it | give the person the `action_url`; retry when they confirm. `rapibase sql` without `--read` needs write: to only read, add `--read` (or use `rapibase tables`, `rapibase rls list`, `rapibase api get`) |
 | 5 | `plan_limit` | plan limit (free project already used, services, size) | tell the person; they decide. If the free project is already used, the error names it: use that project, or the person deletes it from the console. Don't push a paid plan |
 | 6 | `project_not_running` | instance paused, provisioning or in error; carries `status` | provisioning: `rapibase status --wait`. Paused: the person resumes it from the console (`action_url`, or `rapibase open console`) |
 | 7 | `rate_limited` | carries `retry_after` (e.g. one restart every 3 minutes) | wait that long instead of retrying in a loop |

@@ -159,6 +159,11 @@ func merge(old []byte, vars map[string]string, order []string) []byte {
 				}
 				continue
 			}
+			// our own header, written by an earlier version or in another
+			// language: in the current one
+			if strings.HasPrefix(line, "# Rapibase (rapibase env pull).") {
+				line = "# " + i18n.T("env.file_header")
+			}
 			out.WriteString(line + "\n")
 		}
 	}

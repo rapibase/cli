@@ -178,22 +178,97 @@ func TestFindSkillsAndUninstall(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	found := FindSkills(root, false)
+	found := FindSkills(root, false, nil)
 	if want := 2*len(skills.Names()) + 1; len(found) != want {
 		t.Fatalf("found %d, want %d: %+v", len(found), want, found)
 	}
-	if got := FindSkills(root, true); len(got) != 0 {
+	if got := FindSkills(root, true, nil); len(got) != 0 {
 		t.Fatalf("nothing in the home folder: %+v", got)
 	}
 	if err := RemoveOldSkill(found); err != nil {
 		t.Fatal(err)
 	}
-	if again := FindSkills(root, false); len(again) != 0 {
+	if again := FindSkills(root, false, nil); len(again) != 0 {
 		t.Fatalf("left: %+v", again)
 	}
 	b, _ := os.ReadFile(filepath.Join(root, "AGENTS.md"))
 	if string(b) != "# My rules\n\nBe nice.\n" {
 		t.Fatalf("AGENTS.md: %q", b)
+	}
+	// no empty .claude/skills or .agents/skills left behind
+	for _, d := range []string{".claude", ".agents"} {
+		if _, err := os.Stat(filepath.Join(root, d)); !os.IsNotExist(err) {
+			t.Errorf("%s left empty: %v", d, err)
+		}
+	}
+}
+
+// skill uninstall --agent: only that agent's folder; a folder with other
+// things in it stays.
+func TestFindSkillsOneAgent(t *testing.T) {
+	isolate(t)
+	root := t.TempDir()
+	for _, a := range []Agent{Claude, Codex} {
+		if _, err := InstallSkills(a, ScopeProject, root, false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(t, filepath.Join(root, ".claude", "settings.json"), `{}`)
+	found := FindSkills(root, false, []Agent{Claude})
+	if len(found) != len(skills.Names()) {
+		t.Fatalf("only Claude's skills: %+v", found)
+	}
+	for _, f := range found {
+		if !strings.Contains(filepath.ToSlash(f.Path), "/.claude/skills/") {
+			t.Fatalf("not Claude's: %s", f.Path)
+		}
+	}
+	if err := RemoveOldSkill(found); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills")); !os.IsNotExist(err) {
+		t.Error(".claude/skills left empty")
+	}
+	if _, err := os.Stat(filepath.Join(root, ".claude", "settings.json")); err != nil {
+		t.Error(".claude had settings.json: it stays")
+	}
+	if left := FindSkills(root, false, []Agent{Codex}); len(left) == 0 {
+		t.Error("Codex's skills should still be there")
+	}
+}
+
+// An .mcp.json that only held Rapibase goes; one with more stays.
+func TestRemoveServerEmptyFile(t *testing.T) {
+	root := t.TempDir()
+	only := filepath.Join(root, ".mcp.json")
+	write(t, only, `{"mcpServers":{"rapibase":{"type":"http","url":"https://rapibase.com/mcp"}}}`)
+	if ok, err := removeServer(only, "mcpServers", "rapibase"); !ok || err != nil {
+		t.Fatal(ok, err)
+	}
+	if _, err := os.Stat(only); !os.IsNotExist(err) {
+		t.Error(".mcp.json with nothing left should go")
+	}
+	cursor := filepath.Join(root, ".cursor", "mcp.json")
+	write(t, cursor, `{"mcpServers":{"rapibase":{"url":"https://rapibase.com/mcp"}}}`)
+	if _, err := removeServer(cursor, "mcpServers", "rapibase"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".cursor")); !os.IsNotExist(err) {
+		t.Error(".cursor only had mcp.json: it goes")
+	}
+	more := filepath.Join(root, "opencode.json")
+	write(t, more, `{"$schema":"x","mcp":{"rapibase":{"type":"remote"}}}`)
+	if _, err := removeServer(more, "mcp", "rapibase"); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(more); err != nil || !strings.Contains(string(b), "$schema") {
+		t.Errorf("opencode.json has more config: it stays (%s, %v)", b, err)
+	}
+	if root == "" || filepath.Dir(only) != root {
+		t.Fatal("the repo folder itself is never removed")
+	}
+	if _, err := os.Stat(root); err != nil {
+		t.Fatal("root removed")
 	}
 }
 

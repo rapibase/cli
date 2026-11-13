@@ -20,7 +20,7 @@ var helpGroups = []struct {
 	{"help.group.project", []string{"projects", "projects create", "link", "status", "env pull", "open"}},
 	{"help.group.publish", []string{"deploy [dir]", "deploys", "functions deploy", "services deploy", "logs"}},
 	{"help.group.operate", []string{"sql", "tables", "api", "rls", "config", "restart"}},
-	{"help.group.agent", []string{"skill install", "skill uninstall", "mcp add", "mcp remove"}},
+	{"help.group.agent", []string{"skill install", "skill update", "skill uninstall", "mcp add", "mcp remove"}},
 }
 
 // helpEnv are the environment variables the CLI reads (spec §4.7).

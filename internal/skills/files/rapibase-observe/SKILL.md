@@ -2,7 +2,7 @@
 name: rapibase-observe
 description: Status, logs, errors and plan limits of a Rapibase project - whether the instance is running, its URLs and active release, recent logs of the instance and of its services, what an API or CLI error means and how to fix it, when (rarely) to restart, and the free plan's limits, pauses and usage. Use when something in a Rapibase project fails, looks stuck or slow, returns an unexpected error, or the user asks about the project's state, URLs, logs, usage or limits.
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Rapibase observe
@@ -114,9 +114,9 @@ why, and let the person decide: don't push an upgrade.
   which keeps a key in plain text, or a `rapibase-<slug>`), it replaces it after a yes; without a TTY,
   `mcp add` and `init` answer `missing_flag` / `mcp_error` and add nothing: ask the person, then run
   `rapibase mcp add --yes`.
-- `rapibase skill uninstall [--scope project|user]` and
+- `rapibase skill uninstall [--agent …] [--scope project|user]` and
   `rapibase mcp remove [name] [--agent …] [--scope project|user]` take them out again, only when the
-  person asks (e.g. to repeat a setup from scratch).
+  person asks (e.g. to repeat a setup from scratch). `--scope local` is the same as `project`.
 - `rapibase whoami` shows whether the connection is in read mode for a project. In read mode
-  `rapibase sql` answers `forbidden` even for a SELECT: read with `rapibase tables`, `rapibase rls list`
-  and `rapibase api get /api/v1/rest/<table>`.
+  `rapibase sql` answers `forbidden` even for a SELECT: read with `rapibase sql --read '<SELECT>'` (MCP:
+  `query_sql`), `rapibase tables`, `rapibase rls list` and `rapibase api get /api/v1/rest/<table>`.

@@ -26,8 +26,8 @@ in a frontend. `auth.uid()` is available in policy SQL.
 - `custom` mode = RLS on with NO policies (default-deny) until you add your own with `rapibase sql`
   (MCP: `execute_sql`), e.g. `CREATE POLICY ... USING (auth.uid() = user_id)`. Read the policies of a table
   with `rapibase rls list <table>` (MCP: `list_rls`), or with
-  `rapibase sql 'SELECT policyname, cmd, roles, qual, with_check FROM pg_policies WHERE tablename = $1' --params '["orders"]'`
-  (MCP: `execute_sql`; like any `rapibase sql`, it needs write permission).
+  `rapibase sql --read 'SELECT policyname, cmd, roles, qual, with_check FROM pg_policies WHERE tablename = $1' --params '["orders"]'`
+  (MCP: `query_sql`; it works with a read-only connection).
 
 ## What each role sees
 

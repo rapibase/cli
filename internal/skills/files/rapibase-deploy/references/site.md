@@ -38,7 +38,8 @@ rapibase deploy            # or: rapibase deploy ./dist
 - MCP fallback: `create_site_upload` returns a one-time upload URL (valid 10 minutes) and the exact
   command that sends the zip of the build; the answer is `201 {"release_id":"...","url":"..."}`. The zip
   holds the build folder's contents, with `index.html` at its root: adjust the folder in the command if
-  the build isn't in `dist`.
+  the build isn't in `dist`. Windows has no `zip`: use the answer's `command_windows` (it zips with the
+  `tar` that comes with Windows).
 
 ## Testing is not deploying
 

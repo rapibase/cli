@@ -16,8 +16,8 @@ Change domains only when the person asks for it. The project's custom domain is 
 
 ## Setting them
 
-- **The project's subdomain or custom domain:** in the console (`rapibase open console` → the project's
-  domain settings). Give the person the exact hostname to enter. A domain under Rapibase Cloud's own
+- **The project's subdomain or custom domain:** in the console (`rapibase open console`, MCP: `get_project`
+  → `console_url`; then the project's domain settings). Give the person the exact hostname to enter. A domain under Rapibase Cloud's own
   domain is refused (use your own).
 - **A service's custom domain:** `rapibase services update <name> --custom-domain <hostname>` (a full
   hostname like `api.<your-domain>`; `--custom-domain ""` removes it), or `--custom-domain` on
@@ -41,7 +41,7 @@ The answer of the call (its `dns` field) says exactly which record to create. Th
 ## After moving to a custom domain
 
 - Social login: the instance dashboard → Auth → Providers shows the exact callback URLs to register with
-  each provider (`rapibase open dashboard`); check them against the providers' settings after a domain
+  each provider (`rapibase open dashboard`; MCP: `get_project` → `dashboard_url`); check them against the providers' settings after a domain
   change (rapibase-backend skill, `references/auth.md`).
 - `redirect_url` for social login must be on the app's domain (`APP_URL`, `AUTH_REDIRECT_URL` or an origin
   in `CORS_ORIGINS`): update them with `rapibase config set` if the app's domain changes.

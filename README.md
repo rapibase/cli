@@ -16,7 +16,8 @@ Then, from the same terminal (or install it with `npm i -g rapibase` and drop th
 rapibase deploy ./dist          # publish your frontend
 rapibase env pull               # write the project keys to .env (values are never printed)
 rapibase status                 # what is running and where
-rapibase sql "select count(*) from orders"
+rapibase sql 'select count(*) from orders'
+rapibase sql --read 'select status, count(*) from orders group by 1'   # read-only
 rapibase logs --follow
 ```
 
@@ -55,6 +56,9 @@ first (`→ my-app (acme)`).
   the project's service key, which never leaves the server. `api --anon` and `api --jwt <token>` call as a
   visitor or as a signed-in user instead (the anon key is added on the server too), so RLS can be tested
   from the terminal.
+- A read-only connection can still query: `sql --read` runs one statement as a database user that can
+  only read, inside a read-only transaction (`tables` and `api get` work too). Without `--read`, `sql`
+  needs write access.
 - `mcp add` (and `init`) replace an older Rapibase MCP of the same project after a yes, so the agent
   doesn't get the same tools twice; without a TTY that needs `--yes`.
 

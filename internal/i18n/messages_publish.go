@@ -4,9 +4,9 @@ var publishMessages = map[string][3]string{
 	// --- deploy (site) ---
 	"cmd.deploy.short": {"Publish the site", "Publica el sitio", "Publica o site"},
 	"cmd.deploy.long": {
-		"Publish a static site (the build folder of the framework, or the one you pass). Each deploy is a release you can go back to with `rapibase deploys activate`.",
-		"Publica un sitio estático (la carpeta del build del framework, o la que pases). Cada deploy es un release al que puedes volver con `rapibase deploys activate`.",
-		"Publica um site estático (a pasta de build do framework, ou a que você passar). Cada deploy é um release ao qual você pode voltar com `rapibase deploys activate`.",
+		"Publish a static site (the build folder of the framework, or the one you pass). Each deploy is a release you can go back to with `rapibase deploys activate`. Outside CI it stops if a GitHub Actions workflow already deploys (--force) or if there are uncommitted changes (--allow-dirty); in CI (CI=true, GITHUB_ACTIONS…) neither check runs: the workflow is the deploy.",
+		"Publica un sitio estático (la carpeta del build del framework, o la que pases). Cada deploy es un release al que puedes volver con `rapibase deploys activate`. Fuera de CI se frena si ya publica un workflow de GitHub Actions (--force) o si hay cambios sin commitear (--allow-dirty); en CI (CI=true, GITHUB_ACTIONS…) no hace ninguno de los dos chequeos: el workflow es el deploy.",
+		"Publica um site estático (a pasta de build do framework, ou a que você passar). Cada deploy é um release ao qual você pode voltar com `rapibase deploys activate`. Fora de CI para se um workflow do GitHub Actions já publica (--force) ou se há mudanças sem commit (--allow-dirty); em CI (CI=true, GITHUB_ACTIONS…) não faz nenhuma das duas verificações: o workflow é o deploy.",
 	},
 	"flag.exclude": {
 		"leave out files or folders (repeatable)",
@@ -193,9 +193,9 @@ var publishMessages = map[string][3]string{
 		"binário Linux x86-64 a rodar (a pasta soma arquivos que ele lê)",
 	},
 	"flag.svc_path": {
-		"URL path where it is mounted (/api, or / for the whole site)",
-		"path de la URL donde se monta (/api, o / para todo el sitio)",
-		"caminho da URL onde é montado (/api, ou / para o site todo)",
+		`URL path where it is mounted (/api, / for the whole site, or "" for internal only: other services call it at <name>:8080)`,
+		`path de la URL donde se monta (/api, / para todo el sitio, o "" para que sea solo interno: lo llaman los otros servicios en <nombre>:8080)`,
+		`caminho da URL onde é montado (/api, / para o site todo, ou "" para ser só interno: os outros serviços o chamam em <nome>:8080)`,
 	},
 	"flag.svc_subdomain": {
 		"also serve it on its own subdomain",

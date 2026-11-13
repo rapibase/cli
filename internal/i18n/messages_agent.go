@@ -63,10 +63,10 @@ var agentMessages = map[string][3]string{
 		"los reescribe aunque los instalados sean más nuevos",
 		"reescreve mesmo que os instalados sejam mais novos",
 	},
-	"skill.updated":        {"Updated %s", "Actualizado %s", "Atualizado %s"},
+	"skill.updated":        {"Updated %s (v%s)", "Actualizado %s (v%s)", "Atualizado %s (v%s)"},
 	"skill.none_installed": {"There are no Rapibase skills installed: `rapibase skill install`", "No hay skills de Rapibase instalados: `rapibase skill install`", "Não há skills do Rapibase instalados: `rapibase skill install`"},
-	"skill.up_to_date":     {"The %d installed skill(s) are up to date", "Los %d skill(s) instalados están al día", "Os %d skill(s) instalados estão em dia"},
-	"skill.installed":      {"Skills for %s: %s (%s)", "Skills para %s: %s (%s)", "Skills para %s: %s (%s)"},
+	"skill.up_to_date":     {"The %d installed skill(s) are up to date (v%s)", "Los %d skill(s) instalados están al día (v%s)", "Os %d skill(s) instalados estão em dia (v%s)"},
+	"skill.installed":      {"Skills v%s for %s: %s (%s)", "Skills v%s para %s: %s (%s)", "Skills v%s para %s: %s (%s)"},
 	"skill.kept_newer": {
 		"Kept %s in %s: the installed one is newer",
 		"Se mantuvo %s en %s: el instalado es más nuevo",

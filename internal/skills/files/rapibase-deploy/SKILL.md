@@ -2,7 +2,7 @@
 name: rapibase-deploy
 description: Publish a Rapibase project - the static frontend (built-in hosting with releases and one-step rollback), own services in any language (Go, Rust, Zig, Python, Node, Bun) on the same domain, custom domains, and automatic deploys from GitHub Actions. Use only when the user explicitly asks to deploy, publish or roll back a Rapibase project, to run their own backend service next to it, or to set up its domain or CI.
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Rapibase deploy

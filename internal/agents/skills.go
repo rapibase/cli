@@ -136,11 +136,17 @@ func FindOldSkill(root string) []OldSkill {
 // FindSkills lists every Rapibase skill installed for this folder (the
 // repo's agent folders) or, with user, in the home folder: the four skills,
 // the old single one and the lines in AGENTS.md that point to them. It is
-// what `skill uninstall` removes.
-func FindSkills(root string, user bool) []OldSkill {
+// what `skill uninstall` removes. only limits it to some agents (nil: all);
+// the old single skill is not tied to an agent, so it comes only with nil.
+func FindSkills(root string, user bool, only []Agent) []OldSkill {
 	var out []OldSkill
 	seen := map[string]bool{}
-	for _, a := range All {
+	list := only
+	if list == nil {
+		list = All
+	}
+	agentsLine := only == nil
+	for _, a := range list {
 		t := SkillDir(a, ScopeProject, root)
 		if user {
 			t = SkillDir(a, ScopeUser, root)
@@ -149,6 +155,9 @@ func FindSkills(root string, user bool) []OldSkill {
 			continue
 		}
 		seen[t.Dir] = true
+		if filepath.Base(filepath.Dir(t.Dir)) == ".agents" {
+			agentsLine = true
+		}
 		for _, name := range skills.Names() {
 			d := filepath.Join(t.Dir, name)
 			if n, _, ok := skills.Installed(d); ok && n == name {
@@ -159,12 +168,14 @@ func FindSkills(root string, user bool) []OldSkill {
 	inRepo := func(p string) bool {
 		return strings.HasPrefix(filepath.Clean(p), filepath.Clean(root)+string(filepath.Separator))
 	}
-	for _, o := range FindOldSkill(root) {
-		if inRepo(o.Path) != user {
-			out = append(out, o)
+	if only == nil {
+		for _, o := range FindOldSkill(root) {
+			if inRepo(o.Path) != user {
+				out = append(out, o)
+			}
 		}
 	}
-	if !user {
+	if !user && agentsLine {
 		p := filepath.Join(root, "AGENTS.md")
 		if b, err := os.ReadFile(p); err == nil && strings.Contains(string(b), ".agents/skills/rapibase-") {
 			out = append(out, OldSkill{Path: p, Kind: "skills_line"})
@@ -186,6 +197,8 @@ func RemoveOldSkill(old []OldSkill) error {
 			if err := os.RemoveAll(o.Path); err != nil {
 				return err
 			}
+			// .claude/skills (and .claude) left empty go too
+			pruneEmpty(filepath.Dir(o.Path), 2)
 		case "file":
 			if err := os.Remove(o.Path); err != nil && !os.IsNotExist(err) {
 				return err
@@ -197,6 +210,17 @@ func RemoveOldSkill(old []OldSkill) error {
 		}
 	}
 	return nil
+}
+
+// pruneEmpty removes dir if it is empty, and then its parents, at most
+// levels folders up. A folder with anything in it stays.
+func pruneEmpty(dir string, levels int) {
+	for i := 0; i < levels; i++ {
+		if os.Remove(dir) != nil { // fails unless empty
+			return
+		}
+		dir = filepath.Dir(dir)
+	}
 }
 
 // dropLines removes the lines of a file that contain s; a blank line left

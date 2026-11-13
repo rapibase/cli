@@ -14,6 +14,7 @@ import (
 	"github.com/rapibase/cli/internal/cerr"
 	"github.com/rapibase/cli/internal/i18n"
 	"github.com/rapibase/cli/internal/project"
+	"github.com/rapibase/cli/internal/skills"
 	"github.com/rapibase/cli/internal/ui"
 )
 
@@ -161,7 +162,7 @@ func (a *app) skillCmd() *cobra.Command {
 			return nil, err
 		}
 		for _, u := range res.Updated {
-			a.ui.Success(i18n.T("skill.updated", u))
+			a.ui.Success(i18n.T("skill.updated", u, skills.SetVersion()))
 		}
 		switch {
 		case len(res.Updated) == 0 && len(res.Current) == 0:
@@ -173,23 +174,33 @@ func (a *app) skillCmd() *cobra.Command {
 			}
 			a.ui.Println(i18n.T("skill.none_installed"))
 		case len(res.Updated) == 0:
-			a.ui.Success(i18n.T("skill.up_to_date", len(res.Current)))
+			a.ui.Success(i18n.T("skill.up_to_date", len(res.Current), skills.SetVersion()))
 		}
 		return res, nil
 	})
 	var usc string
+	var uagents []string
 	uninstall := &cobra.Command{
 		Use: "uninstall", Aliases: []string{"remove", "rm"},
 		Short: i18n.T("cmd.skill.uninstall.short"), Long: i18n.T("cmd.skill.uninstall.long"), Args: cobra.NoArgs,
-		Example: examples("rapibase skill uninstall", "rapibase skill uninstall --scope user --yes"),
+		Example: examples("rapibase skill uninstall", "rapibase skill uninstall --scope user --yes", "rapibase skill uninstall --agent codex"),
 	}
 	uninstall.Flags().StringVar(&usc, "scope", "project", i18n.T("flag.scope_remove"))
+	uninstall.Flags().StringArrayVar(&uagents, "agent", nil, i18n.T("flag.agent_remove"))
 	uninstall.RunE = a.run(func(cmd *cobra.Command, _ []string) (any, error) {
 		sc, ok := agents.ParseScope(usc)
 		if !ok {
 			return nil, cerr.New(cerr.Usage, i18n.T("agent.bad_scope", usc))
 		}
-		found := agents.FindSkills(a.root(), sc == agents.ScopeUser)
+		var only []agents.Agent // nil: every agent, and the old single skill
+		if len(uagents) > 0 {
+			list, err := agentList(uagents)
+			if err != nil {
+				return nil, err
+			}
+			only = list
+		}
+		found := agents.FindSkills(a.root(), sc == agents.ScopeUser, only)
 		if len(found) == 0 {
 			a.ui.Println(i18n.T("skill.none_found"))
 			return map[string]any{"removed": []agents.OldSkill{}}, nil
@@ -261,7 +272,7 @@ func (a *app) installSkills(list []agents.Agent, sc agents.Scope, force bool) (m
 		}
 		results = append(results, r)
 		if !done[r.Dir] && len(r.Installed) > 0 {
-			a.ui.Success(i18n.T("skill.installed", x.Label(), strings.Join(r.Installed, ", "), r.Dir))
+			a.ui.Success(i18n.T("skill.installed", skills.SetVersion(), x.Label(), strings.Join(r.Installed, ", "), r.Dir))
 		}
 		done[r.Dir] = true
 		for _, s := range r.Skipped {

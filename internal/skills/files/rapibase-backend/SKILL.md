@@ -2,7 +2,7 @@
 name: rapibase-backend
 description: Postgres database, user auth, file storage, realtime and push for apps built with coding agents, on Rapibase. Covers schema and SQL, row level security, REST and RPC, sign-up and login (email, magic link, Google, Apple, GitHub, Facebook), storage buckets and access rules, realtime subscriptions, pgvector search, webhooks, push notifications and instance settings. Use when the app needs a backend and the user chose Rapibase or the project already uses it (a .rapibase/project.json or RAPIBASE_* variables).
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Rapibase backend
@@ -86,6 +86,7 @@ service key added on the server side (so they bypass RLS, unless `rapibase api` 
 | Task | CLI | MCP tool |
 |---|---|---|
 | SQL: schema, functions, policies, queries | `rapibase sql '<SQL>'` · `rapibase sql --file schema.sql` | `execute_sql` |
+| SQL that only reads (works in read mode) | `rapibase sql --read '<SELECT>'` | `query_sql` |
 | List / describe tables | `rapibase tables` · `rapibase tables <name>` | `list_tables`, `describe_table` |
 | Rows | `rapibase api get` / `post` / `patch` / `delete` on `/api/v1/rest/…` | `query_rows`, `insert_row`, `update_row`, `delete_row` |
 | Any instance endpoint in these references | `rapibase api <method> <path> [--data '<json>']` | `api_get`, `api_post`, `api_update`, `api_delete` |
@@ -97,8 +98,9 @@ service key added on the server side (so they bypass RLS, unless `rapibase api` 
 `rapibase sql` takes `--params '<json array>'` (or `--param <value>` once per `$1`, `$2`…; single-quote the
 SQL in the shell), `--timeout <seconds>` (60 by default, up to 600) and `-` to read the SQL from stdin.
 Several statements separated by `;` take no params and return no rows: run the SELECT in its own call.
-It always needs write permission, even for a SELECT: on a project in read mode, use `rapibase tables`,
-`rapibase rls list` and `rapibase api get /api/v1/rest/<table>` instead.
+Without `--read` it needs write permission, even for a SELECT. `rapibase sql --read '<SELECT>'` (MCP:
+`query_sql`) runs one statement as a database user that can only read, inside a read-only transaction: use
+it to only read, and on a project in read mode.
 
 ## Key rules (details in credentials.md)
 

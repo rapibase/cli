@@ -15,6 +15,11 @@ var operateMessages = map[string][3]string{
 	},
 	"flag.tail":   {"number of lines, up to 2000", "cantidad de líneas, hasta 2000", "quantidade de linhas, até 2000"},
 	"flag.follow": {"keep showing new lines", "sigue mostrando las líneas nuevas", "continua mostrando as linhas novas"},
+	"logs.gap": {
+		"(more than %d lines arrived in 2 s: some were skipped)",
+		"(llegaron más de %d líneas en 2 s: se saltaron algunas)",
+		"(chegaram mais de %d linhas em 2 s: algumas foram puladas)",
+	},
 	"logs.bad_container": {
 		"unknown container %q: use app, db or storage (or --service <name>)",
 		"contenedor desconocido %q: usa app, db o storage (o --service <nombre>)",
@@ -58,11 +63,21 @@ var operateMessages = map[string][3]string{
 	// --- sql ---
 	"cmd.sql.short": {"Run SQL on the database", "Corre SQL en la base", "Roda SQL no banco"},
 	"cmd.sql.long": {
-		"Run SQL on the project's Postgres: one query with $1, $2… parameters, or a script of several statements separated by ; (then without parameters and without rows). It always needs write access.",
-		"Corre SQL en el Postgres del proyecto: una consulta con parámetros $1, $2…, o un script de varias sentencias separadas por ; (entonces sin parámetros y sin filas). Siempre pide escritura.",
-		"Roda SQL no Postgres do projeto: uma consulta com parâmetros $1, $2…, ou um script de várias instruções separadas por ; (aí sem parâmetros e sem linhas). Sempre exige escrita.",
+		"Run SQL on the project's Postgres: one query with $1, $2… parameters, or a script of several statements separated by ; (then without parameters and without rows). It needs write access; with --read it runs one statement as a user that can only read, inside a read-only transaction, and a read-only connection is enough.",
+		"Corre SQL en el Postgres del proyecto: una consulta con parámetros $1, $2…, o un script de varias sentencias separadas por ; (entonces sin parámetros y sin filas). Pide escritura; con --read corre una sola sentencia como un usuario que solo puede leer, en una transacción de solo lectura, y alcanza con una conexión de lectura.",
+		"Roda SQL no Postgres do projeto: uma consulta com parâmetros $1, $2…, ou um script de várias instruções separadas por ; (aí sem parâmetros e sem linhas). Exige escrita; com --read roda uma só instrução como um usuário que só pode ler, numa transação somente leitura, e basta uma conexão de leitura.",
 	},
 	"flag.sql_file": {"read the SQL from a file", "lee el SQL de un archivo", "lê o SQL de um arquivo"},
+	"flag.sql_read": {
+		"read only: one statement that cannot write (works with a read-only connection)",
+		"solo lectura: una sentencia que no puede escribir (sirve con una conexión de lectura)",
+		"somente leitura: uma instrução que não pode escrever (serve com uma conexão de leitura)",
+	},
+	"sql.read_hint": {
+		"to only read, add --read",
+		"para solo leer, agrega --read",
+		"para só ler, adicione --read",
+	},
 	"flag.sql_param": {
 		"value for $1, $2… in order (numbers, true, false and null go as such)",
 		"valor para $1, $2… en orden (números, true, false y null van como tales)",

@@ -137,7 +137,8 @@ With the CLI: `rapibase api get` / `post` / `patch` on these paths (MCP: `api_ge
 - `POST /api/v1/push/config/android` `{"project_id","client_email","private_key"}` (from Firebase's
   service account JSON).
 - iOS and Android carry third-party private keys. If the person prefers not to pass them through the
-  chat, they load them in the instance dashboard (`rapibase open dashboard`), or save them in a JSON file
+  chat, they load them in the instance dashboard (`rapibase open dashboard`; MCP: `get_project` →
+  `dashboard_url`), or save them in a JSON file
   outside the repo and you pass it with `--data @<path>` without opening it.
 - `GET /api/v1/push/config` shows the state per platform (no secrets) · `PATCH
   /api/v1/push/config/{platform}/toggle` `{"enabled":bool}` enables or disables it.

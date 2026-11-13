@@ -22,16 +22,16 @@ use them only when the person asks for them by name.
 - With a session but no linked folder, `rapibase link <slug>` is lighter than `init`: it only writes
   `.rapibase/project.json`. Without a TTY, `init` needs `--project <slug>` (an existing project) or
   `--name <name>` (a new one); otherwise it answers `missing_flag` with the list of projects.
-- `rapibase skill uninstall [--scope project|user]` and
+- `rapibase skill uninstall [--agent …] [--scope project|user]` and
   `rapibase mcp remove [name] [--agent …] [--scope project|user]` undo `skill install` and `mcp add`,
-  only when the person asks.
+  only when the person asks (`--scope local` is the same as `project`: this repo).
 
 If there is neither a CLI session nor the MCP, ask the person to run `npx rapibase@latest init` or to
 connect the MCP (the project's Connect tab in the console) instead of asking for keys. On a server or in
 CI without a browser, OAuth is replaced by a **server token** the person creates in the console (Agents →
 Tokens for servers and CI) and leaves in the environment variable `RAPIBASE_TOKEN`: the CLI reads it, and
-an MCP config references it as the header `Authorization: Bearer ${RAPIBASE_TOKEN}`. Never ask them to
-paste that token to you.
+an MCP config (pointed at the account MCP address that the console's Connect tab shows) references it as
+the header `Authorization: Bearer ${RAPIBASE_TOKEN}`. Never ask them to paste that token to you.
 
 Tokens in CI, and what each one reaches:
 
@@ -54,9 +54,12 @@ Tokens in CI, and what each one reaches:
   `rapibase sql 'SELECT * FROM orders WHERE id = $1' --params '[42]'`.
 - 60 s per call by default, up to 600 with `--timeout <seconds>` (MCP: `timeout_seconds`).
 - Several statements separated by `;` take no params and return no rows: the SELECT goes in its own call.
-- It always needs write permission, even for a SELECT. On a project or connection in read mode it
-  answers `forbidden`: read with `rapibase tables`, `rapibase rls list` and
-  `rapibase api get /api/v1/rest/<table>` instead.
+- Without `--read` it needs write permission, even for a SELECT: on a project or connection in read mode
+  it answers `forbidden`.
+- To only read, add `--read` (MCP: `query_sql`): `rapibase sql --read 'SELECT …'`. It runs ONE statement
+  as a database user that can only read, inside a read-only transaction, so it works on a read-only
+  connection too. It sees every row (RLS doesn't filter it, like the service key); anything that writes,
+  DDL and several statements in one call fail.
 
 Inspecting the schema (these work with read-only connections too):
 
@@ -64,12 +67,12 @@ Inspecting the schema (these work with read-only connections too):
 rapibase tables          # every table: row count, primary key and columns (MCP: list_tables)
 rapibase tables orders   # one table: columns, types, nullability, defaults, primary key, foreign keys (MCP: describe_table)
 rapibase rls list orders # its RLS mode, owner column and policies (MCP: list_rls)
-# indexes aren't in `rapibase tables` (needs write permission, like any sql; MCP: execute_sql)
-rapibase sql 'SELECT indexname, indexdef FROM pg_indexes WHERE tablename = $1' --params '["orders"]'
+# indexes aren't in `rapibase tables`: read them with sql --read (MCP: query_sql)
+rapibase sql --read 'SELECT indexname, indexdef FROM pg_indexes WHERE tablename = $1' --params '["orders"]'
 ```
 
 Extensions (MCP: `list_extensions`): PostGIS, pg_trgm, pg_cron, `vector` and others are available. List
-them with `rapibase sql 'SELECT name, installed_version FROM pg_available_extensions ORDER BY name'` and
+them with `rapibase sql --read 'SELECT name, installed_version FROM pg_available_extensions ORDER BY name'` and
 enable one with `CREATE EXTENSION IF NOT EXISTS <name>`.
 
 ### MCP tools and their CLI equivalent
@@ -79,10 +82,11 @@ enable one with `CREATE EXTENSION IF NOT EXISTS <name>`.
 | `list_projects`, `get_project` | `rapibase projects`, `rapibase status` |
 | `create_project` | `rapibase projects create --name <name>` (a free project, or one covered by the person's Team plan), or `rapibase init --name <name>` |
 | `execute_sql` | `rapibase sql` |
+| `query_sql` (read only) | `rapibase sql --read` |
 | `list_tables`, `describe_table` | `rapibase tables`, `rapibase tables <name>` |
 | `create_table`, `drop_table` | `rapibase sql 'CREATE TABLE …'` / `'DROP TABLE …'` (confirm first) |
 | `query_rows`, `insert_row`, `update_row`, `delete_row` | `rapibase api get` / `post` / `patch` / `delete` on `/api/v1/rest/{table}[/{id}]` |
-| `list_extensions` | `rapibase sql` on `pg_available_extensions` |
+| `list_extensions` | `rapibase sql --read` on `pg_available_extensions` |
 | `list_rls`, `set_rls`, `disable_rls` | `rapibase rls list [table]`, `rapibase rls set <table> <mode>`, `rapibase rls disable <table> --yes` after the person said yes ([rls.md](rls.md)) |
 | `list_buckets`, `create_bucket`, `update_bucket`, `delete_bucket` | `rapibase api` on `/api/v1/storage/buckets[/{name}]` |
 | `list_objects`, `delete_object`, `create_signed_url` | `rapibase api` on `/api/v1/storage/…` ([storage.md](storage.md)) |

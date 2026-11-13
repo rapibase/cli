@@ -369,6 +369,17 @@ func removeServer(path, key, name string) (bool, error) {
 	if !servers.del(name) {
 		return false, nil
 	}
+	// a file that only held this server (an .mcp.json left as
+	// {"mcpServers": {}}) goes, and its folder if it was only for it
+	if len(servers.keys) == 0 && len(top.keys) == 1 {
+		if err := os.Remove(path); err != nil {
+			return false, err
+		}
+		if strings.HasPrefix(filepath.Base(filepath.Dir(path)), ".") {
+			pruneEmpty(filepath.Dir(path), 1)
+		}
+		return true, nil
+	}
 	sb, _ := servers.MarshalJSON()
 	top.set(key, sb)
 	return true, writeJSON(path, top)

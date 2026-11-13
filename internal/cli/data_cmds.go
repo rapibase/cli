@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
@@ -29,15 +30,17 @@ func (a *app) sqlCmd() *cobra.Command {
 	var file, paramsJSON string
 	var params []string
 	var timeout float64
+	var readOnly bool
 	cmd := &cobra.Command{
 		Use:   "sql [query]",
 		Short: i18n.T("cmd.sql.short"),
 		Long:  i18n.T("cmd.sql.long"),
 		Args:  cobra.MaximumNArgs(1),
 		Example: examples(
-			`rapibase sql "select count(*) from orders"`,
-			// comillas simples: en bash/zsh "$1" se expande a vacío
+			// comillas simples siempre: en bash/zsh "$1" se expande a vacío
+			`rapibase sql 'select count(*) from orders'`,
 			`rapibase sql 'select * from orders where status = $1' --param paid`,
+			`rapibase sql --read 'select status, count(*) from orders group by 1'`,
 			"rapibase sql --file migrations/001_init.sql --timeout 300",
 			"cat seed.sql | rapibase sql -",
 		),
@@ -46,6 +49,7 @@ func (a *app) sqlCmd() *cobra.Command {
 	cmd.Flags().StringArrayVar(&params, "param", nil, i18n.T("flag.sql_param"))
 	cmd.Flags().StringVar(&paramsJSON, "params", "", i18n.T("flag.sql_params"))
 	cmd.Flags().Float64Var(&timeout, "timeout", 0, i18n.T("flag.sql_timeout"))
+	cmd.Flags().BoolVar(&readOnly, "read", false, i18n.T("flag.sql_read"))
 	cmd.RunE = a.run(func(cmd *cobra.Command, args []string) (any, error) {
 		query, err := a.readQuery(args, file)
 		if err != nil {
@@ -71,7 +75,11 @@ func (a *app) sqlCmd() *cobra.Command {
 		if timeout > 0 {
 			body["timeout_seconds"] = timeout
 		}
-		t, err := a.resolve(true)
+		if readOnly {
+			// L4: el control plane lo corre con query_sql del core
+			body["read_only"] = true
+		}
+		t, err := a.resolve(!readOnly)
 		if err != nil {
 			return nil, err
 		}
@@ -82,6 +90,11 @@ func (a *app) sqlCmd() *cobra.Command {
 		err = a.api.Do(a.ctx, "POST", "/api/projects/"+t.IDString()+"/sql", api.JSONBody(body), &out)
 		stop()
 		if err != nil {
+			// una conexión de solo lectura: decir que existe --read
+			var e *cerr.Error
+			if errors.As(err, &e) && e.Code == cerr.Forbidden && !readOnly && e.Str("hint") == "" {
+				e.With("hint", i18n.T("sql.read_hint"))
+			}
 			return nil, err
 		}
 		var res struct {

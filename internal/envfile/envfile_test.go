@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/rapibase/cli/internal/i18n"
 )
 
 func TestWriteMergesAndProtects(t *testing.T) {
@@ -96,5 +98,18 @@ func TestQuote(t *testing.T) {
 		if got := quote(in); got != want {
 			t.Errorf("quote(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+// The header written by an earlier version (in English) comes out in the
+// current language; any other comment stays as it is.
+func TestMergeTranslatesOwnHeader(t *testing.T) {
+	defer i18n.Set(i18n.Current())
+	i18n.Set(i18n.ES)
+	old := "# Rapibase (rapibase env pull). Never commit this file.\nRAPIBASE_URL=x\n# Never commit secrets\n"
+	got := string(merge([]byte(old), map[string]string{"RAPIBASE_URL": "y"}, []string{"RAPIBASE_URL"}))
+	want := "# Rapibase (rapibase env pull). Nunca subas este archivo al repo.\nRAPIBASE_URL=y\n# Never commit secrets\n"
+	if got != want {
+		t.Fatalf("got %q", got)
 	}
 }

@@ -2,7 +2,7 @@
 name: rapibase-functions
 description: Server-side TypeScript functions on Rapibase - HTTP endpoints (fn.http), cron jobs (fn.cron) and background workers with retries (fn.job), with db, fetch, env and a job queue built in, deployed with one command. Use when an app on Rapibase needs server logic - a custom endpoint, receiving third-party webhooks, scheduled tasks, calling external APIs with secrets, sending email or background jobs - and the project already uses Rapibase or the user chose it.
 metadata:
-  version: "0.1.2"
+  version: "0.1.3"
 ---
 
 # Rapibase functions

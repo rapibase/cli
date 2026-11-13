@@ -508,10 +508,13 @@ func (a *app) logsCmd() *cobra.Command {
 		case container != "" && container != "app":
 			return nil, cerr.New(cerr.Usage, i18n.T("logs.bad_container", container))
 		}
-		fetch := func(n int) ([]string, error) {
+		fetch := func(n int, since string) ([]string, error) {
 			q := url.Values{"tail": {fmt.Sprint(n)}}
 			if which != "" {
 				q.Set("container", which)
+			}
+			if since != "" {
+				q.Set("since", since)
 			}
 			var out struct {
 				Logs string `json:"logs"`
@@ -527,21 +530,19 @@ func (a *app) logsCmd() *cobra.Command {
 		}
 		// the server answers 200 lines to anything above 2000: ask for the most
 		// it gives instead of silently getting less
-		lines, err := fetch(min(tail, 2000))
+		lines, err := fetch(min(tail, 2000), "")
 		if err != nil {
 			return nil, err
 		}
-		all := append([]string{}, lines...)
-		for _, l := range lines {
+		var cur logCursor
+		all := cur.fresh(lines)
+		for _, l := range all {
 			a.ui.Println(l)
 		}
 		if follow {
-			// polling every 2 s; lines carry docker timestamps, so the last
-			// one seen marks where to continue. Without a TTY it ends at 90 s.
-			seen := map[string]bool{}
-			for _, l := range lines {
-				seen[l] = true
-			}
+			// every 2 s, the lines since the last timestamp shown (L5). Without
+			// a TTY it ends at 90 s.
+			const batch = 2000
 			deadline := time.Now().Add(a.waitBudget(24 * time.Hour))
 			for time.Now().Before(deadline) {
 				select {
@@ -549,22 +550,19 @@ func (a *app) logsCmd() *cobra.Command {
 					return map[string]any{"project": t.view(), "lines": all}, nil
 				case <-time.After(2 * time.Second):
 				}
-				more, err := fetch(200)
+				more, err := fetch(batch, cur.since())
 				if err != nil {
 					return nil, err
 				}
-				for _, l := range more {
-					if !seen[l] {
-						seen[l] = true
-						all = append(all, l)
-						a.ui.Println(l)
-					}
+				if cur.gap(more, batch) {
+					a.ui.Note(i18n.T("logs.gap", batch))
 				}
-				if len(seen) > 5000 { // keep memory bounded on long follows
-					seen = map[string]bool{}
-					for _, l := range more {
-						seen[l] = true
-					}
+				for _, l := range cur.fresh(more) {
+					all = append(all, l)
+					a.ui.Println(l)
+				}
+				if len(all) > 10000 { // keep memory bounded on long follows
+					all = append([]string{}, all[len(all)-5000:]...)
 				}
 			}
 		}
