@@ -133,10 +133,55 @@ func FindOldSkill(root string) []OldSkill {
 	return out
 }
 
-// RemoveOldSkill deletes what FindOldSkill found.
+// FindSkills lists every Rapibase skill installed for this folder (the
+// repo's agent folders) or, with user, in the home folder: the four skills,
+// the old single one and the lines in AGENTS.md that point to them. It is
+// what `skill uninstall` removes.
+func FindSkills(root string, user bool) []OldSkill {
+	var out []OldSkill
+	seen := map[string]bool{}
+	for _, a := range All {
+		t := SkillDir(a, ScopeProject, root)
+		if user {
+			t = SkillDir(a, ScopeUser, root)
+		}
+		if (t.ScopeUsed == ScopeUser) != user || seen[t.Dir] {
+			continue
+		}
+		seen[t.Dir] = true
+		for _, name := range skills.Names() {
+			d := filepath.Join(t.Dir, name)
+			if n, _, ok := skills.Installed(d); ok && n == name {
+				out = append(out, OldSkill{Path: d, Kind: "dir"})
+			}
+		}
+	}
+	inRepo := func(p string) bool {
+		return strings.HasPrefix(filepath.Clean(p), filepath.Clean(root)+string(filepath.Separator))
+	}
+	for _, o := range FindOldSkill(root) {
+		if inRepo(o.Path) != user {
+			out = append(out, o)
+		}
+	}
+	if !user {
+		p := filepath.Join(root, "AGENTS.md")
+		if b, err := os.ReadFile(p); err == nil && strings.Contains(string(b), ".agents/skills/rapibase-") {
+			out = append(out, OldSkill{Path: p, Kind: "skills_line"})
+		}
+	}
+	return out
+}
+
+// RemoveOldSkill deletes what FindOldSkill (or FindSkills) found.
 func RemoveOldSkill(old []OldSkill) error {
 	for _, o := range old {
 		switch o.Kind {
+		case "skills_line":
+			if err := dropLines(o.Path, ".agents/skills/rapibase-"); err != nil {
+				return err
+			}
+			continue
 		case "dir":
 			if err := os.RemoveAll(o.Path); err != nil {
 				return err
@@ -146,22 +191,32 @@ func RemoveOldSkill(old []OldSkill) error {
 				return err
 			}
 		case "agents_line":
-			b, err := os.ReadFile(o.Path)
-			if err != nil {
-				continue
-			}
-			var keep []string
-			for _, line := range strings.Split(string(b), "\n") {
-				if !strings.Contains(line, "rapibase.md") {
-					keep = append(keep, line)
-				}
-			}
-			if err := os.WriteFile(o.Path, []byte(strings.Join(keep, "\n")), 0o644); err != nil {
+			if err := dropLines(o.Path, "rapibase.md"); err != nil {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// dropLines removes the lines of a file that contain s; a blank line left
+// at the end by the removal goes too.
+func dropLines(path, s string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var keep []string
+	for _, line := range strings.Split(string(b), "\n") {
+		if !strings.Contains(line, s) {
+			keep = append(keep, line)
+		}
+	}
+	out := strings.Join(keep, "\n")
+	if strings.HasSuffix(out, "\n\n") {
+		out = strings.TrimRight(out, "\n") + "\n"
+	}
+	return os.WriteFile(path, []byte(out), 0o644)
 }
 
 // --- AGENTS.md and .git/info/exclude ---

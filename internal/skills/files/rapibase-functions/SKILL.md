@@ -2,7 +2,7 @@
 name: rapibase-functions
 description: Server-side TypeScript functions on Rapibase - HTTP endpoints (fn.http), cron jobs (fn.cron) and background workers with retries (fn.job), with db, fetch, env and a job queue built in, deployed with one command. Use when an app on Rapibase needs server logic - a custom endpoint, receiving third-party webhooks, scheduled tasks, calling external APIs with secrets, sending email or background jobs - and the project already uses Rapibase or the user chose it.
 metadata:
-  version: "0.1.0"
+  version: "0.1.2"
 ---
 
 # Rapibase functions
@@ -34,8 +34,11 @@ rapibase-observe).
 - **Fixed rules:**
   - Never deploy without an explicit request from the person at that moment ("deploy it", "publish it",
     "put it in production"). Finishing a task, fixing a bug or getting something "working" is not a
-    request to deploy. If the repo deploys with GitHub Actions (`.github/workflows/rapibase-deploy.yml`),
-    deploying = `git push` to the configured branch.
+    request to deploy. Deploying = publishing: the site (`rapibase deploy`, `rapibase deploys activate`),
+    own services (`rapibase services deploy`) and pushing to the branch a CI workflow publishes from. If
+    the repo deploys with GitHub Actions (`.github/workflows/rapibase-deploy.yml`), deploying = `git push`
+    to the configured branch. `rapibase functions deploy` is NOT a deploy in this sense: it is part of
+    building the backend, like creating a table, and the way functions get tested.
   - Simple and free first. No upsell: don't push paid plans or own services when a function or the free
     plan does the job.
   - If something doesn't fit the project's plan, tell the person; they decide.
@@ -86,14 +89,20 @@ fn.job("my-worker", (payload) => {   // worker: automatic retries
 
 ## Deploy, list, read, delete
 
-- **Deploy:** `rapibase functions deploy [dir]` (default dir `functions/`). It uploads every `.ts` file
-  in the folder (no subfolders: names go without `/`), reloads instantly, and shows COMPILE ERRORS as
-  `file:line`: a file with an error is SKIPPED and the other functions stay loaded. `--prune` also
-  deletes from the server the functions that no longer exist locally (it asks with a TTY; without one it
-  needs `--yes`). MCP: `deploy_functions` with `[{name, content}]` (errors come back in `errors`).
+- **Deploy:** `rapibase functions deploy [dir]` (default dir `functions/`). It uploads every `.ts` and
+  `.js` file in the folder (not `.d.ts`; no subfolders: names go without `/`), reloads instantly, and shows
+  COMPILE ERRORS as `file:line`: a file with an error is SKIPPED and the other functions stay loaded.
+  MCP: `deploy_functions` with `[{name, content}]` (errors come back in `errors`).
+- **This is building, not publishing:** uploading functions is how they get tested, like creating a
+  table, so it doesn't need a deploy request (see Setup). It is still the project's live backend: say
+  what you uploaded.
+- **`--prune`** also deletes from the server the functions that no longer exist locally. It deletes
+  files: ask the person first, and pass `--prune --yes` only after they said yes (without a TTY it
+  needs `--yes`).
 - **List:** `rapibase functions list` (MCP: `api_get /api/v1/functions`).
-- **Read the uploaded code:** `rapibase api get /api/v1/functions/myfunctions.ts` returns the text as it
-  was uploaded (the response also carries `X-Content-SHA256`): compare it with the repo's file.
+- **Read the uploaded code:** `rapibase api get /api/v1/functions/myfunctions.ts -o <file>` (MCP:
+  `api_get`) saves the text as it was uploaded (save it outside `functions/`): compare it with the repo's
+  file (`diff`, or a SHA-256 of both; the CLI doesn't show the response's `X-Content-SHA256` header).
 - **Delete:** `rapibase functions rm myfunctions.ts` (MCP: `api_delete /api/v1/functions/myfunctions.ts`).
 
 ## Calling them
@@ -101,12 +110,15 @@ fn.job("my-worker", (payload) => {   // worker: automatic retries
 - **Invoke:** any method to `{base-url}/api/fn/my-endpoint`. Auth works like REST (SERVICE_KEY, or
   ANON_KEY + JWT → `req.user` arrives). With `{public:true}` in `fn.http` it has NO auth (to receive
   third-party webhooks: verify their signature in the handler). From the agent:
-  `rapibase api post /api/fn/my-endpoint --data '{"value":"x"}'`. From a frontend hosted by the project:
+  `rapibase api post /api/fn/my-endpoint --data '{"value":"x"}'` (MCP: `api_post`); add `--jwt <token>`
+  to call it as a signed-in test user (`req.user` arrives) or `--anon` as a visitor (rapibase-backend
+  skill, `references/credentials.md`). From a frontend hosted by the project:
   `fetch('/api/fn/my-endpoint', …)` with `apikey` and the user's `Authorization`.
 - **Enqueue from outside:** `POST /api/v1/jobs` `{"name":"my-worker","payload":{...},"delay_seconds":0}`
-  (`rapibase api post /api/v1/jobs --data '…'`). **Inspect the queue** (state, attempts, `last_error`):
-  `rapibase api get /api/v1/jobs`.
-- **Debug:** `console.log` and runtime errors go to `rapibase logs` (MCP: `get_logs`).
+  (`rapibase api post /api/v1/jobs --data '…'`, MCP: `api_post`). **Inspect the queue** (state,
+  attempts, `last_error`): `rapibase api get /api/v1/jobs` (MCP: `api_get`).
+- **Debug:** `console.log` and runtime errors go to `rapibase logs` (MCP: `get_logs`);
+  `rapibase logs --follow` keeps printing them live while you call the function.
 
 ## Common uses
 

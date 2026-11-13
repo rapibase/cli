@@ -113,25 +113,31 @@ func (c *Client) Do(ctx context.Context, method, path string, body Body, out any
 }
 
 // Raw sends a request and returns the response as-is (any status). With
-// auth, a 401 triggers one token refresh and a retry.
-func (c *Client) Raw(ctx context.Context, method, path string, body Body, auth bool) (*Response, error) {
-	res, err := c.send(ctx, method, path, body, auth)
+// auth, a 401 of the control plane triggers one token refresh and a retry
+// (a 401 that comes from the project's instance is the answer itself).
+// hdr adds headers to the request.
+func (c *Client) Raw(ctx context.Context, method, path string, body Body, auth bool, hdr ...string) (*Response, error) {
+	res, err := c.send(ctx, method, path, body, auth, hdr)
 	if err != nil {
 		return nil, err
 	}
-	if res.Status == http.StatusUnauthorized && auth && c.Auth != nil {
+	if res.Status == http.StatusUnauthorized && auth && c.Auth != nil && !res.Upstream() {
 		ok, rerr := c.Auth.Refresh(ctx)
 		if rerr != nil {
 			return nil, rerr
 		}
 		if ok {
-			return c.send(ctx, method, path, body, auth)
+			return c.send(ctx, method, path, body, auth, hdr)
 		}
 	}
 	return res, nil
 }
 
-func (c *Client) send(ctx context.Context, method, path string, body Body, auth bool) (*Response, error) {
+// Upstream reports a response the control plane passed through from the
+// project's instance (X-Rapibase-Upstream), not one of its own.
+func (r *Response) Upstream() bool { return r.Header.Get("X-Rapibase-Upstream") != "" }
+
+func (c *Client) send(ctx context.Context, method, path string, body Body, auth bool, hdr []string) (*Response, error) {
 	target := path
 	if !strings.HasPrefix(path, "http://") && !strings.HasPrefix(path, "https://") {
 		target = c.Base + path
@@ -168,6 +174,9 @@ func (c *Client) send(ctx context.Context, method, path string, body Body, auth 
 		req.Header.Set("Accept", "application/json")
 		if ct != "" {
 			req.Header.Set("Content-Type", ct)
+		}
+		for i := 0; i+1 < len(hdr); i += 2 {
+			req.Header.Set(hdr[i], hdr[i+1])
 		}
 		if auth && c.Auth != nil {
 			tok, err := c.Auth.Token(ctx)

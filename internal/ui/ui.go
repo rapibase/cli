@@ -33,6 +33,9 @@ type UI struct {
 	Out       io.Writer
 	Err       io.Writer
 	in        *bufio.Reader
+	// keys: the prompts move with the arrows (prompt.go); otherwise they
+	// are numbered and read a line.
+	keys bool
 }
 
 // New builds the UI from the global flags and the environment.
@@ -48,7 +51,11 @@ func New(jsonOut, yes bool) *UI {
 		in:        bufio.NewReader(os.Stdin),
 	}
 	u.Interactive = stdinTTY && stdoutTTY && !IsCI() && !jsonOut && !yes
-	u.Color = stdoutTTY && stderrTTY && os.Getenv("NO_COLOR") == "" && os.Getenv("TERM") != "dumb" && enableVT()
+	// VT sequences: colors, and moving the cursor for the arrow prompts
+	// (those also work with NO_COLOR)
+	vt := stdoutTTY && stderrTTY && os.Getenv("TERM") != "dumb" && enableVT()
+	u.Color = vt && os.Getenv("NO_COLOR") == ""
+	u.keys = vt && stdinTTY
 	return u
 }
 
@@ -172,22 +179,48 @@ func (u *UI) PrettyJSON(v any) {
 
 // --- prompts (interactive only) ---
 
-// Option is a choice in Select. Header options are group titles, not
-// selectable.
+// Option is a choice in Select. Header options are group titles; Disabled
+// ones are shown (Hint says why) but can't be chosen.
 type Option struct {
-	Label  string
-	Hint   string
-	Header bool
+	Label    string
+	Hint     string
+	Header   bool
+	Disabled bool
 }
 
-// Select shows a numbered list and returns the index of the chosen option.
+// Select asks to choose one option and returns its index: with the arrows
+// on a terminal that supports them, otherwise from a numbered list.
 func (u *UI) Select(prompt string, opts []Option, def int) (int, error) {
+	if u.keys {
+		return u.selectKeys(prompt, opts, def, false)
+	}
+	return u.selectNumbered(prompt, opts, def)
+}
+
+// SelectBack is Select where Esc returns ErrBack (only with the arrows).
+func (u *UI) SelectBack(prompt string, opts []Option, def int) (int, error) {
+	if u.keys {
+		return u.selectKeys(prompt, opts, def, true)
+	}
+	return u.selectNumbered(prompt, opts, def)
+}
+
+// selectNumbered shows a numbered list and reads the number.
+func (u *UI) selectNumbered(prompt string, opts []Option, def int) (int, error) {
 	fmt.Fprintln(u.Err, u.Bold("? ")+prompt)
 	index := map[int]int{}
 	n := 0
 	for i, o := range opts {
 		if o.Header {
 			fmt.Fprintln(u.Err, "  "+u.Dim(o.Label))
+			continue
+		}
+		if o.Disabled {
+			line := "     -  " + o.Label
+			if o.Hint != "" {
+				line += "  " + o.Hint
+			}
+			fmt.Fprintln(u.Err, u.Dim(line))
 			continue
 		}
 		n++
@@ -232,6 +265,21 @@ func (u *UI) Select(prompt string, opts []Option, def int) (int, error) {
 
 // Input asks for a line of text, with a default.
 func (u *UI) Input(prompt, def string, valid func(string) string) (string, error) {
+	if u.keys {
+		return u.inputKeys(prompt, def, valid, false)
+	}
+	return u.inputLine(prompt, def, valid)
+}
+
+// InputBack is Input where Esc returns ErrBack (only with the arrows).
+func (u *UI) InputBack(prompt, def string, valid func(string) string) (string, error) {
+	if u.keys {
+		return u.inputKeys(prompt, def, valid, true)
+	}
+	return u.inputLine(prompt, def, valid)
+}
+
+func (u *UI) inputLine(prompt, def string, valid func(string) string) (string, error) {
 	for {
 		q := u.Bold("? ") + prompt
 		if def != "" {
@@ -255,11 +303,22 @@ func (u *UI) Input(prompt, def string, valid func(string) string) (string, error
 	}
 }
 
-// SetInput replaces stdin as the source of the answers (tests).
-func (u *UI) SetInput(r io.Reader) { u.in = bufio.NewReader(r) }
+// SetInput replaces stdin as the source of the answers (tests): the prompts
+// become the numbered ones that read lines.
+func (u *UI) SetInput(r io.Reader) {
+	u.in = bufio.NewReader(r)
+	u.keys = false
+}
 
 // Confirm asks a yes/no question.
 func (u *UI) Confirm(prompt string, def bool) (bool, error) {
+	if u.keys {
+		return u.confirmKeys(prompt, def)
+	}
+	return u.confirmLine(prompt, def)
+}
+
+func (u *UI) confirmLine(prompt string, def bool) (bool, error) {
 	hint := "y/N"
 	if def {
 		hint = "Y/n"

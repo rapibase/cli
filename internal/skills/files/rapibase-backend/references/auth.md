@@ -35,6 +35,14 @@ User management (service key): `GET` / `POST /api/v1/auth/users`, `GET` / `PUT` 
 From the agent: `rapibase api get /api/v1/auth/users`, `rapibase api post /api/v1/auth/users --data '{…}'`,
 and so on (MCP: `api_get` / `api_post` / `api_update` / `api_delete`).
 
+To try the flow from the agent as the app would, with no keys in the shell (a test account; the answer
+carries `token`, which the next calls take with `--jwt`, see [credentials.md](credentials.md)):
+
+```bash
+rapibase api post /api/v1/auth/signin --anon -d '{"email":"…","password":"…"}'
+rapibase api get /api/v1/rest/orders --jwt <token>
+```
+
 ## Social login on the web (Google, GitHub, Facebook)
 
 1. The owner creates the OAuth app in the provider's console (step by step in "Creating the credentials",
@@ -62,7 +70,7 @@ googleLink.href = `/api/v1/auth/oauth/google?redirect_url=${redirect}`   // pref
   `CORS_ORIGINS`; localhost is always accepted in development). It only accepts http(s): in mobile apps use
   the native login below.
 - The owner sees each provider's state (active or not, missing variables, exact URLs to copy) in the
-  instance dashboard → Auth → Providers (`rapibase open dashboard`).
+  instance dashboard → Auth → Providers (`rapibase open dashboard`; MCP: `get_project` → `dashboard_url`).
 
 ## Native login in mobile apps: Google and Sign in with Apple
 
@@ -108,7 +116,8 @@ them through it step by step, one at a time, and confirm each step before the ne
 project's exact callback URL (it is in the instance dashboard → Auth → Providers). At the end they paste
 the values in Rapibase Cloud → Settings → Social login, never in the chat.
 
-**Google (web)**, in the Google Cloud console:
+**Google (web)**, in the Google Cloud console (Google Cloud's web console, not Firebase's; signed in with
+the Google account that will own the app):
 1. Top left, create a new project (or pick one) with the app's name.
 2. Menu → "Google Auth Platform" (formerly "OAuth consent screen") → "Get started": app name, support
    email, audience "External" and contact email → Create.
@@ -134,25 +143,27 @@ the values in Rapibase Cloud → Settings → Social login, never in the chat.
 4. The Android/iOS client IDs go in `OAUTH_GOOGLE_CLIENT_IDS`, comma-separated. These clients have no
    secret.
 
-**Sign in with Apple**, in the Apple Developer account (requires the paid Apple Developer Program
-membership):
+**Sign in with Apple**, in the Apple Developer account (Apple's developer site → Account, signed in with
+the Apple ID of the team; requires the paid Apple Developer Program membership):
 1. Certificates, Identifiers & Profiles → Identifiers → the app's App ID → check "Sign in with Apple" →
    Save.
 2. In Xcode: target → Signing & Capabilities → "+ Capability" → "Sign in with Apple".
 3. `OAUTH_APPLE_CLIENT_IDS` = the bundle ID. No private key or Team ID needed.
 4. Only for the web with Apple JS: Identifiers → "+" → "Services IDs" → create one, enable Sign in with
    Apple on it, add the web's domain and return URL, and add that Services ID to `OAUTH_APPLE_CLIENT_IDS`.
-- Apple sends the name and the email only on the first login (the user can choose to hide their email:
-  an Apple private relay address arrives instead).
+- Apple sends the name and the email only on the first login. The user can choose to hide their email:
+  then a random address on Apple's private relay domain arrives instead, which forwards to their real
+  inbox. Treat it as the user's email; don't ask for another one.
 
-**GitHub**, in GitHub → Settings → Developer settings (or the organization → Settings → Developer
-settings):
+**GitHub**, on GitHub: profile picture (top right) → Settings → Developer settings (the last item of the
+left menu); for an app owned by an organization, the organization's Settings → Developer settings:
 1. "OAuth Apps" → "New OAuth App": name, Homepage URL (the app's web) and "Authorization callback URL" =
    `{base-url}/api/v1/auth/oauth/github/callback` → Register application.
 2. Copy the "Client ID"; press "Generate a new client secret" and copy it right away (it is shown once).
    They go in `OAUTH_GITHUB_CLIENT_ID` and `OAUTH_GITHUB_CLIENT_SECRET`.
 
-**Facebook**, in Meta for Developers → My Apps:
+**Facebook**, in Meta for Developers (Meta's developer site, signed in with the Facebook account that
+will own the app) → My Apps:
 1. "Create app" → use case "Authenticate and request data from users with Facebook Login" → name and
    email → Create.
 2. Use cases → Facebook Login → Customize → Settings → under "Valid OAuth Redirect URIs" add

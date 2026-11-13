@@ -36,5 +36,5 @@ others receive it). You get `presence_state` (the full list on joining) and `pre
 Filters: structured JSON (eq neq lt lte gt gte in nin is like ilike contains contained_by match), not
 PostgREST's DSL.
 
-Is realtime delivering at all? `rapibase api get /api/realtime/metrics` (see the rapibase-observe skill
-before restarting anything). Which rows each subscriber gets is decided by RLS: [rls.md](rls.md).
+Is realtime delivering at all? `rapibase api get /api/realtime/metrics` (MCP: `api_get`; see the
+rapibase-observe skill before restarting anything). Which rows each subscriber gets is decided by RLS: [rls.md](rls.md).

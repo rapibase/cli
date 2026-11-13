@@ -4,8 +4,9 @@ NATIVE push to Android (FCM HTTP v1), iOS (APNs) and the web (Web Push/VAPID) wi
 error is JSON `{"error", "field"?}`: a missing or invalid field answers **400** and `field` says which one.
 
 **Auth of the client endpoints** (`subscribe`, `unsubscribe`, `subscriptions`, `notifications`):
-- `apikey: {anon-key}` + `Authorization: Bearer <the user's access_token>` → acts on the JWT's user (the
-  `user_id` comes from the token; sending another `user_id` gives 403). This is what the app uses.
+- `apikey: {anon-key}` + `Authorization: Bearer <jwt>`, the user's JWT (the `token` field) → acts on the
+  JWT's user (the `user_id` comes from the token; sending another `user_id` gives 403). This is what the
+  app uses.
 - `apikey: {service-key}` → acts on the `user_id` (UUID from `auth_users`) you pass in the body or in
   `?user_id=`. If the user doesn't exist: 404.
 - `POST /api/v1/push/send` is service key ONLY (a user's JWT can never notify others) → from a function,
@@ -53,7 +54,7 @@ unknown token returns `deleted:0` and status 200.
 With the service key: `?user_id=<uuid>` lists that user's; without `user_id` it lists everyone's (newest
 first, `?limit=` up to 500, 100 by default). With anon key + JWT it returns the user's own. Response:
 `{"subscriptions":[{id,user_id,platform,token,endpoint,metadata,created_at}],"count":N}`.
-From the agent: `rapibase api get "/api/v1/push/subscriptions?user_id=<uuid>"`.
+From the agent: `rapibase api get "/api/v1/push/subscriptions?user_id=<uuid>"` (MCP: `api_get`).
 
 ## Sending — `POST /api/v1/push/send` (service key)
 

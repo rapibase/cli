@@ -2,7 +2,7 @@
 name: rapibase-backend
 description: Postgres database, user auth, file storage, realtime and push for apps built with coding agents, on Rapibase. Covers schema and SQL, row level security, REST and RPC, sign-up and login (email, magic link, Google, Apple, GitHub, Facebook), storage buckets and access rules, realtime subscriptions, pgvector search, webhooks, push notifications and instance settings. Use when the app needs a backend and the user chose Rapibase or the project already uses it (a .rapibase/project.json or RAPIBASE_* variables).
 metadata:
-  version: "0.1.1"
+  version: "0.1.2"
 ---
 
 # Rapibase backend
@@ -34,8 +34,11 @@ rapibase-observe).
 - **Fixed rules:**
   - Never deploy without an explicit request from the person at that moment ("deploy it", "publish it",
     "put it in production"). Finishing a task, fixing a bug or getting something "working" is not a
-    request to deploy. If the repo deploys with GitHub Actions (`.github/workflows/rapibase-deploy.yml`),
-    deploying = `git push` to the configured branch.
+    request to deploy. Deploying = publishing: the site (`rapibase deploy`, `rapibase deploys activate`),
+    own services (`rapibase services deploy`) and pushing to the branch a CI workflow publishes from. If
+    the repo deploys with GitHub Actions (`.github/workflows/rapibase-deploy.yml`), deploying = `git push`
+    to the configured branch. `rapibase functions deploy` is NOT a deploy in this sense: it is part of
+    building the backend, like creating a table, and the way functions get tested.
   - Simple and free first. No upsell: don't push paid plans or own services when a function or the free
     plan does the job.
   - If something doesn't fit the project's plan, tell the person; they decide.
@@ -78,21 +81,24 @@ restarts and plan limits: rapibase-observe.
 ## Admin work from the agent
 
 The agent never handles keys: `rapibase sql` and `rapibase api` run against the linked project with the
-service key added on the server side (so they bypass RLS).
+service key added on the server side (so they bypass RLS, unless `rapibase api` gets `--anon` or `--jwt`).
 
 | Task | CLI | MCP tool |
 |---|---|---|
-| SQL: schema, functions, policies, queries | `rapibase sql "<SQL>"` · `rapibase sql --file schema.sql` | `execute_sql` |
-| List / describe tables | `rapibase sql` on `information_schema` | `list_tables`, `describe_table` |
+| SQL: schema, functions, policies, queries | `rapibase sql '<SQL>'` · `rapibase sql --file schema.sql` | `execute_sql` |
+| List / describe tables | `rapibase tables` · `rapibase tables <name>` | `list_tables`, `describe_table` |
 | Rows | `rapibase api get` / `post` / `patch` / `delete` on `/api/v1/rest/…` | `query_rows`, `insert_row`, `update_row`, `delete_row` |
 | Any instance endpoint in these references | `rapibase api <method> <path> [--data '<json>']` | `api_get`, `api_post`, `api_update`, `api_delete` |
-| RLS mode of a table | `rapibase rls` · `rapibase rls set <table> <mode>` · `rapibase rls disable <table>` (see rls.md) | `list_rls`, `set_rls`, `disable_rls` |
+| Test as a visitor / a signed-in user (RLS applies) | `rapibase api get <path> --anon` · `rapibase api <method> <path> --jwt <token>` (see credentials.md) | — (CLI only) |
+| RLS mode of a table | `rapibase rls list [table]` · `rapibase rls set <table> <mode>` · `rapibase rls disable <table> --yes`, only after the person said yes (see rls.md) | `list_rls`, `set_rls`, `disable_rls` |
 | File upload / download | `rapibase api post … -F file=@<file>` · `rapibase api get … -o <file>` (see storage.md) | `upload_object`, `download_object` |
 | Instance settings | `rapibase config get` / `rapibase config set KEY=VALUE` | `get_config`, `set_config` |
 
-`rapibase sql` takes `--params '<json array>'` for `$1`, `$2`… (single-quote the SQL in the shell) and
-`--timeout <seconds>` (60 by default, up to 600). Several statements separated by `;` take no params and
-return no rows: run the SELECT in its own call.
+`rapibase sql` takes `--params '<json array>'` (or `--param <value>` once per `$1`, `$2`…; single-quote the
+SQL in the shell), `--timeout <seconds>` (60 by default, up to 600) and `-` to read the SQL from stdin.
+Several statements separated by `;` take no params and return no rows: run the SELECT in its own call.
+It always needs write permission, even for a SELECT: on a project in read mode, use `rapibase tables`,
+`rapibase rls list` and `rapibase api get /api/v1/rest/<table>` instead.
 
 ## Key rules (details in credentials.md)
 
@@ -110,9 +116,10 @@ return no rows: run the SELECT in its own call.
 1. `rapibase whoami` and `rapibase status` (or `init`, per Setup). `rapibase env pull --framework <fw>` if
    the frontend needs the URL and anon key.
 2. Read [references/design.md](references/design.md) before choosing routes or adding services.
-3. Inspect what exists (`rapibase sql` on `information_schema`), then write the schema to a file and,
+3. Inspect what exists (`rapibase tables`, `rapibase tables <name>`), then write the schema to a file and,
    after the person confirms the DDL, run `rapibase sql --file schema.sql`.
 4. Set each table's RLS mode ([references/rls.md](references/rls.md)): e.g. `owner` on `user_id` for
-   per-user rows, `read_only` for catalogs. A new table reaches logged-in users only.
+   per-user rows, `read_only` for catalogs. A new table reaches logged-in users only. Check what each
+   role sees with `--anon` / `--jwt` on `rapibase api` (credentials.md).
 5. App code: auth ([references/auth.md](references/auth.md)) and data with the anon key + the user's JWT.
 6. Try it locally. Publishing is the rapibase-deploy skill, and only when the person asks for it.

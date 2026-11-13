@@ -18,10 +18,11 @@ fn.job("notify-user", (p) => {
 })
 ```
 
-- `FN_*` secrets: ONLY for THIRD-PARTY credentials (Stripe, Resend, FCM…). The PERSON creates them in the
-  Rapibase Cloud console (the project's Secrets tab), so the third party's key never passes through the
-  chat; you only tell them the name your code expects (e.g. `FN_RESEND_KEY`). Read them with
-  `env.get("FN_X")`. Never put them in the frontend. (`rapibase config set` doesn't take `FN_*`.)
+- `FN_*` secrets: ONLY for THIRD-PARTY credentials (Stripe, an email provider, FCM…). The PERSON enters
+  them, in the Rapibase Cloud console (the project's Secrets tab) or by running
+  `rapibase config set FN_…=…` themselves, so the third party's key never passes through the chat; you
+  only tell them the name your code expects (e.g. `FN_<PROVIDER>_KEY`) and never type one yourself. Read
+  them with `env.get("FN_X")`. Never put them in the frontend.
 
 ## Limits and runtime behavior (avoid discovering them the hard way)
 
@@ -31,11 +32,11 @@ fn.job("notify-user", (p) => {
 - HARD timeouts: 30 s per HTTP invocation; 5 min for cron and jobs. `fetch` is synchronous (15 s by
   default, `timeoutMs` max 60000, response capped at 5 MB). `sleep(ms)` max 10 s.
 - Workers: 3 attempts with backoff (30 s × attempt number); when they run out, the job stays `failed`
-  with `last_error` visible in `GET /api/v1/jobs` (`rapibase api get /api/v1/jobs`).
+  with `last_error` visible in `GET /api/v1/jobs` (`rapibase api get /api/v1/jobs`, MCP: `api_get`).
 - Cron: standard 5-field spec (no seconds), in SERVER time (UTC on Rapibase Cloud). An invalid spec is
   reported as a load error; it doesn't fail silently.
 - `console.log` and execution errors go to the instance's logs: `rapibase logs` (MCP: `get_logs`; or the
-  Logs tab in the console). It is your debugging tool.
+  Logs tab in the console), `rapibase logs --follow` to watch them live. It is your debugging tool.
 - Upload: max 512 KB per file and 50 files per request; file names `[a-zA-Z0-9._-]` with a `.ts`/`.js`
   extension; function/job/cron names `[a-z0-9_-]` (max 64, lowercase).
 - Don't return pending promises: there is no event loop. An async handler works only because `await` on

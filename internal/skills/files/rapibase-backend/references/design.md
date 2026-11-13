@@ -36,6 +36,9 @@ project's, or its custom domain), with no CORS between the parts:
   - **Next.js / Nuxt / SvelteKit with SSR:** service `web` at `/` (Node or Bun). Its route handlers under
     `/api/...` work, except under the reserved routes.
   - **Separate public API:** the service on its own subdomain (`subdomain: true` → host
-    `<service>-<project subdomain>`), where there are no reserved routes.
+    `<service>-<project subdomain>`), where there are no reserved routes:
+    `rapibase services update <name> --subdomain` (or `--subdomain` on `rapibase services deploy`; MCP:
+    `update_service`). Its exact URL comes from `rapibase services` (`subdomain_url`); never build it by
+    hand.
 - `rapibase services` (MCP: `get_services`) shows the project's current route map: look at it before
   choosing.

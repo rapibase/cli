@@ -47,6 +47,9 @@ type app struct {
 	cwd   string
 
 	projects []api.Project // GET /api/projects, cached for the run
+	// draftName: the name typed for a new project, offered again when
+	// init comes back to its menu
+	draftName string
 
 	data any
 	err  error
@@ -134,10 +137,14 @@ func (a *app) setup(cmd *cobra.Command) error {
 	return nil
 }
 
-// allowsDeployToken: RAPIBASE_DEPLOY_TOKEN only reaches deploy and deploys.
+// allowsDeployToken: RAPIBASE_DEPLOY_TOKEN reaches what the control plane
+// accepts it for: the site's deploys and the services (deploy, activate,
+// restart, update, rm and the list). Functions, SQL, the API, logs and
+// config need a personal token.
 func allowsDeployToken(cmd *cobra.Command) bool {
 	p := cmd.CommandPath()
-	return p == "rapibase deploy" || strings.HasPrefix(p, "rapibase deploys") || strings.HasPrefix(p, "rapibase services deploy")
+	return p == "rapibase deploy" || p == "rapibase deploys" || strings.HasPrefix(p, "rapibase deploys ") ||
+		p == "rapibase services" || strings.HasPrefix(p, "rapibase services ")
 }
 
 // run adapts a command function to cobra: results are kept for Main.

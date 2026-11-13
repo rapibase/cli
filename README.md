@@ -2,8 +2,6 @@
 
 The agent-native backend, from your terminal.
 
-> **Status:** in development. Not published on npm yet.
-
 ```bash
 npx rapibase@latest init
 ```
@@ -32,8 +30,8 @@ self-hosted; this CLI manages Cloud projects.
 | **Start** | `init`, `login`, `logout`, `whoami` |
 | **Project** | `projects`, `projects create`, `link`, `unlink`, `status`, `env pull`, `open` |
 | **Publish** | `deploy [dir]`, `deploys` (and `deploys activate` to roll back), `functions deploy\|list\|rm`, `services deploy\|update\|activate\|restart\|rm`, `logs` |
-| **Operate** | `sql`, `api <get\|post\|put\|patch\|delete> <path>`, `rls`, `config get\|set`, `restart` |
-| **Your agent** | `skill install\|update`, `mcp add` |
+| **Operate** | `sql`, `tables [table]`, `api <get\|post\|put\|patch\|delete> <path>`, `rls`, `config get\|set`, `restart` |
+| **Your agent** | `skill install\|update\|uninstall`, `mcp add\|remove` |
 
 `rapibase <command> --help` shows the options and examples of each one, in English, Spanish or
 Portuguese (`--lang`, `RAPIBASE_LANG` or your system language).
@@ -53,8 +51,12 @@ first (`→ my-app (acme)`).
   nothing waits more than 90 seconds.
 - `login` without a TTY prints the link and the code (`login_pending`, exit 10); run it again after the
   person approves.
-- The agent never handles keys: `sql`, `api`, `functions` and `rls` go through Rapibase with the
-  project's service key, which never leaves the server.
+- The agent never handles keys: `sql`, `tables`, `api`, `functions` and `rls` go through Rapibase with
+  the project's service key, which never leaves the server. `api --anon` and `api --jwt <token>` call as a
+  visitor or as a signed-in user instead (the anon key is added on the server too), so RLS can be tested
+  from the terminal.
+- `mcp add` (and `init`) replace an older Rapibase MCP of the same project after a yes, so the agent
+  doesn't get the same tools twice; without a TTY that needs `--yes`.
 
 | Exit | `error.code` |
 |---|---|
@@ -71,7 +73,7 @@ first (`→ my-app (acme)`).
 
 ## CI
 
-Create a deploy token in the console (it only reaches deploys) and:
+Create a deploy token in the console (it reaches the site's deploys and the services) and:
 
 ```yaml
 - run: npx rapibase@latest deploy ./dist
@@ -82,11 +84,12 @@ Create a deploy token in the console (it only reaches deploys) and:
 
 | Variable | |
 |---|---|
-| `RAPIBASE_TOKEN` | a connection token; takes priority over the saved login |
-| `RAPIBASE_DEPLOY_TOKEN` | `rbdep_…`: only `deploy`, `deploys` and `services deploy` |
-| `RAPIBASE_PROJECT` | project slug or id |
+| `RAPIBASE_TOKEN` | `rbpat_…`, a personal token (console → Agents → Tokens for servers and CI); takes priority over the saved login |
+| `RAPIBASE_DEPLOY_TOKEN` | `rbdep_…`: only `deploy`, `deploys` and `services` |
+| `RAPIBASE_PROJECT` | project slug or id (the numeric id with a deploy token) |
 | `RAPIBASE_LANG` | `en`, `es` or `pt` |
 | `RAPIBASE_NO_UPDATE_CHECK` | turns off the "new version" notice |
+| `RAPIBASE_API_URL` | the control plane (`https://rapibase.com` by default) |
 | `NO_COLOR` | plain output |
 
 ## Development

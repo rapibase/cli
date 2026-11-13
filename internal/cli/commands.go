@@ -19,8 +19,18 @@ var helpGroups = []struct {
 	{"help.group.start", []string{"init", "login", "logout", "whoami"}},
 	{"help.group.project", []string{"projects", "projects create", "link", "status", "env pull", "open"}},
 	{"help.group.publish", []string{"deploy [dir]", "deploys", "functions deploy", "services deploy", "logs"}},
-	{"help.group.operate", []string{"sql", "api", "rls", "config", "restart"}},
-	{"help.group.agent", []string{"skill install", "mcp add"}},
+	{"help.group.operate", []string{"sql", "tables", "api", "rls", "config", "restart"}},
+	{"help.group.agent", []string{"skill install", "skill uninstall", "mcp add", "mcp remove"}},
+}
+
+// helpEnv are the environment variables the CLI reads (spec §4.7).
+var helpEnv = []struct{ name, key string }{
+	{"RAPIBASE_TOKEN", "env.token"},
+	{"RAPIBASE_DEPLOY_TOKEN", "env.deploy_token"},
+	{"RAPIBASE_PROJECT", "env.project"},
+	{"RAPIBASE_LANG", "env.lang"},
+	{"RAPIBASE_NO_UPDATE_CHECK", "env.no_update_check"},
+	{"RAPIBASE_API_URL", "env.api_url"},
 }
 
 func (a *app) rootCmd() *cobra.Command {
@@ -53,7 +63,7 @@ func (a *app) rootCmd() *cobra.Command {
 		a.loginCmd(), a.logoutCmd(), a.whoamiCmd(),
 		a.projectsCmd(), a.linkCmd(), a.unlinkCmd(), a.statusCmd(), a.envCmd(), a.openCmd(),
 		a.deployCmd(), a.deploysCmd(), a.functionsCmd(), a.servicesCmd(), a.logsCmd(),
-		a.sqlCmd(), a.apiCmd(), a.rlsCmd(), a.configCmd(), a.restartCmd(),
+		a.sqlCmd(), a.tablesCmd(), a.apiCmd(), a.rlsCmd(), a.configCmd(), a.restartCmd(),
 		a.skillCmd(), a.mcpCmd(),
 	)
 	root.SetHelpFunc(func(cmd *cobra.Command, _ []string) {
@@ -104,6 +114,10 @@ func rootHelp(w io.Writer, root *cobra.Command) {
 		{"-v, --version", "flag.version"},
 	} {
 		fmt.Fprintf(w, "  %-25s %s\n", f.flag, i18n.T(f.key))
+	}
+	fmt.Fprintf(w, "\n%s\n", i18n.T("help.env"))
+	for _, e := range helpEnv {
+		fmt.Fprintf(w, "  %-25s %s\n", e.name, i18n.T(e.key))
 	}
 	fmt.Fprintf(w, "\n%s\n", i18n.T("help.examples"))
 	fmt.Fprintln(w, "  npx rapibase@latest init")

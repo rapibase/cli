@@ -45,7 +45,15 @@ var operateMessages = map[string][3]string{
 		"Não aceitas (fora das variáveis permitidas): %s",
 	},
 	"cmd.restart.short": {"Restart the instance", "Reinicia la instancia", "Reinicia a instância"},
-	"restart.done":      {"Instance restarted", "Instancia reiniciada", "Instância reiniciada"},
+	"cmd.tables.short":  {"Tables and their columns", "Tablas y sus columnas", "Tabelas e suas colunas"},
+	"cmd.tables.long": {
+		"Lists the tables (rows, primary key and columns) or describes one: types, nulls, defaults and foreign keys. It only reads, so it works with a read-only session (unlike `sql`).",
+		"Lista las tablas (filas, clave primaria y columnas) o describe una: tipos, nulos, valores por defecto y claves foráneas. Solo lee, así que funciona con una sesión de solo lectura (a diferencia de `sql`).",
+		"Lista as tabelas (linhas, chave primária e colunas) ou descreve uma: tipos, nulos, valores padrão e chaves estrangeiras. Só lê, então funciona com uma sessão somente leitura (ao contrário do `sql`).",
+	},
+	"tables.none":  {"No tables yet.", "Todavía no hay tablas.", "Ainda não há tabelas."},
+	"tables.rows":  {"%d rows", "%d filas", "%d linhas"},
+	"restart.done": {"Instance restarted", "Instancia reiniciada", "Instância reiniciada"},
 
 	// --- sql ---
 	"cmd.sql.short": {"Run SQL on the database", "Corre SQL en la base", "Roda SQL no banco"},
@@ -135,6 +143,21 @@ var operateMessages = map[string][3]string{
 		"save the response to a file",
 		"guarda la respuesta en un archivo",
 		"salva a resposta em um arquivo",
+	},
+	"flag.api_anon": {
+		"call as a visitor without a session (the project's anon key; it is never shown)",
+		"llama como un visitante sin sesión (la anon key del proyecto; nunca se muestra)",
+		"chama como um visitante sem sessão (a anon key do projeto; nunca é mostrada)",
+	},
+	"flag.api_jwt": {
+		"call as the user of this JWT (anon key + Authorization: Bearer <jwt>)",
+		"llama como el usuario de ese JWT (anon key + Authorization: Bearer <jwt>)",
+		"chama como o usuário desse JWT (anon key + Authorization: Bearer <jwt>)",
+	},
+	"api.anon_and_jwt": {
+		"use --anon or --jwt, not both",
+		"usa --anon o --jwt, no los dos",
+		"use --anon ou --jwt, não os dois",
 	},
 	"api.data_and_form": {
 		"use -d or -F, not both",

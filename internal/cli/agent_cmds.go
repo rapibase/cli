@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -127,7 +129,7 @@ func (a *app) skillCmd() *cobra.Command {
 		Use:     "skill",
 		Short:   i18n.T("cmd.skill.short"),
 		Args:    cobra.NoArgs,
-		Example: examples("rapibase skill install", "rapibase skill install --agent codex --scope user", "rapibase skill update"),
+		Example: examples("rapibase skill install", "rapibase skill install --agent codex --scope user", "rapibase skill update", "rapibase skill uninstall"),
 	}
 	var o agentOpts
 	var force bool
@@ -175,8 +177,51 @@ func (a *app) skillCmd() *cobra.Command {
 		}
 		return res, nil
 	})
-	cmd.AddCommand(install, update)
+	var usc string
+	uninstall := &cobra.Command{
+		Use: "uninstall", Aliases: []string{"remove", "rm"},
+		Short: i18n.T("cmd.skill.uninstall.short"), Long: i18n.T("cmd.skill.uninstall.long"), Args: cobra.NoArgs,
+		Example: examples("rapibase skill uninstall", "rapibase skill uninstall --scope user --yes"),
+	}
+	uninstall.Flags().StringVar(&usc, "scope", "project", i18n.T("flag.scope_remove"))
+	uninstall.RunE = a.run(func(cmd *cobra.Command, _ []string) (any, error) {
+		sc, ok := agents.ParseScope(usc)
+		if !ok {
+			return nil, cerr.New(cerr.Usage, i18n.T("agent.bad_scope", usc))
+		}
+		found := agents.FindSkills(a.root(), sc == agents.ScopeUser)
+		if len(found) == 0 {
+			a.ui.Println(i18n.T("skill.none_found"))
+			return map[string]any{"removed": []agents.OldSkill{}}, nil
+		}
+		a.ui.Println(i18n.T("skill.found", len(found)))
+		for _, f := range found {
+			a.ui.Println("    " + a.shortPath(f.Path))
+		}
+		ok, err := a.sure(i18n.T("skill.uninstall_confirm", len(found)), i18n.T("skill.uninstall_needs_yes", len(found)))
+		if err != nil {
+			return nil, cerr.As(err).With("found", found)
+		}
+		if !ok {
+			return nil, cerr.New(cerr.Usage, i18n.T("deploy.cancelled"))
+		}
+		if err := agents.RemoveOldSkill(found); err != nil {
+			return nil, err
+		}
+		a.ui.Success(i18n.T("skill.uninstalled", len(found)))
+		return map[string]any{"removed": found}, nil
+	})
+	cmd.AddCommand(install, update, uninstall)
 	return cmd
+}
+
+// shortPath shows a path relative to the current folder, or with ~ when it
+// is in the home folder outside the repo.
+func (a *app) shortPath(p string) string {
+	if h, _ := os.UserHomeDir(); h != "" && strings.HasPrefix(p, h) && rel(a.root(), p) == filepath.ToSlash(p) {
+		return "~" + filepath.ToSlash(strings.TrimPrefix(p, h))
+	}
+	return rel(a.cwd, p)
 }
 
 // installSkills writes the skills for each agent, replaces the old single
@@ -282,7 +327,7 @@ func (a *app) mcpCmd() *cobra.Command {
 		Use:     "mcp",
 		Short:   i18n.T("cmd.mcp.short"),
 		Args:    cobra.NoArgs,
-		Example: examples("rapibase mcp add", "rapibase mcp add --agent cursor"),
+		Example: examples("rapibase mcp add", "rapibase mcp add --agent cursor", "rapibase mcp remove"),
 	}
 	var o agentOpts
 	add := &cobra.Command{
@@ -295,40 +340,200 @@ func (a *app) mcpCmd() *cobra.Command {
 		if err != nil {
 			return nil, err
 		}
-		slug := ""
+		slug, sub := "", ""
 		if a.flags.project != "" {
 			p, err := a.findProject(a.flags.project)
 			if err != nil {
 				return nil, err
 			}
-			slug = p.Slug
+			slug, sub = p.Slug, p.Subdomain
 		} else if link, _ := project.Find(a.cwd); link != nil {
 			slug = link.Slug
+			// the subdomain finds the instance's own MCP even under another
+			// name; without a session the name is enough
+			if a.sess != nil && a.sess.LoggedIn() {
+				if p, err := a.findProject(strconv.FormatInt(link.ProjectID, 10)); err == nil {
+					sub = p.Subdomain
+				}
+			}
 		}
-		res := a.addMCP(list, sc, slug)
+		res, err := a.addMCP(list, sc, slug, sub)
+		if err != nil {
+			return nil, cerr.As(err).With("mcp", res)
+		}
 		return map[string]any{"mcp": res}, nil
 	})
-	cmd.AddCommand(add)
+
+	var ro agentOpts
+	remove := &cobra.Command{
+		Use: "remove [name]", Aliases: []string{"rm"},
+		Short: i18n.T("cmd.mcp.remove.short"), Long: i18n.T("cmd.mcp.remove.long"), Args: cobra.MaximumNArgs(1),
+		Example: examples("rapibase mcp remove", "rapibase mcp remove rapibase-my-app-1a2b3c", "rapibase mcp remove --scope user --agent codex"),
+	}
+	remove.Flags().StringArrayVar(&ro.agents, "agent", nil, i18n.T("flag.agent_remove"))
+	remove.Flags().StringVar(&ro.scope, "scope", "project", i18n.T("flag.scope_remove"))
+	remove.RunE = a.run(func(cmd *cobra.Command, args []string) (any, error) {
+		sc, ok := agents.ParseScope(ro.scope)
+		if !ok {
+			return nil, cerr.New(cerr.Usage, i18n.T("agent.bad_scope", ro.scope))
+		}
+		list, err := agentList(ro.agents)
+		if err != nil {
+			return nil, err
+		}
+		var found []agents.MCPEntry
+		for _, x := range list {
+			for _, e := range agents.FindMCP(x, a.root(), a.cwd, a.accountMCP(), sc == agents.ScopeUser) {
+				if len(args) == 0 || e.Name == args[0] {
+					found = append(found, e)
+				}
+			}
+		}
+		if len(found) == 0 {
+			a.ui.Println(i18n.T("mcp.none_found"))
+			return map[string]any{"removed": []agents.MCPEntry{}}, nil
+		}
+		a.ui.Println(i18n.T("mcp.found", len(found)))
+		a.printMCP(found)
+		ok, err = a.sure(i18n.T("mcp.remove_confirm", len(found)), i18n.T("mcp.remove_needs_yes", len(found)))
+		if err != nil {
+			return nil, cerr.As(err).With("found", found)
+		}
+		if !ok {
+			return nil, cerr.New(cerr.Usage, i18n.T("deploy.cancelled"))
+		}
+		removed, manual, err := agents.RemoveMCP(found)
+		for _, e := range removed {
+			a.ui.Success(i18n.T("mcp.removed", e.Name, e.Where()))
+		}
+		if len(manual) > 0 {
+			a.ui.Note(i18n.T("mcp.remove_manual"))
+			for _, m := range manual {
+				a.ui.Println("    " + a.ui.Cyan(m))
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		if len(removed) > 0 {
+			a.ui.Note(i18n.T("mcp.restart_after_remove"))
+		}
+		if removed == nil {
+			removed = []agents.MCPEntry{}
+		}
+		return map[string]any{"removed": removed, "manual": manual}, nil
+	})
+	cmd.AddCommand(add, remove)
 	return cmd
+}
+
+// agentList parses --agent for the commands that look in every agent when
+// none is given.
+func agentList(vals []string) ([]agents.Agent, error) {
+	var out []agents.Agent
+	seen := map[agents.Agent]bool{}
+	for _, s := range vals {
+		for _, part := range strings.Split(s, ",") {
+			x, ok := agents.Parse(part)
+			if !ok || x == agents.None {
+				return nil, cerr.New(cerr.Usage, i18n.T("agent.bad", part, agentNames()))
+			}
+			if !seen[x] {
+				seen[x] = true
+				out = append(out, x)
+			}
+		}
+	}
+	if len(out) == 0 {
+		return []agents.Agent{agents.Claude, agents.Cursor, agents.OpenCode, agents.Codex, agents.Hermes}, nil
+	}
+	return out, nil
+}
+
+func (a *app) accountMCP() string { return strings.TrimRight(a.host, "/") + "/mcp" }
+
+// printMCP lists MCP servers without their keys: only that one is saved.
+func (a *app) printMCP(es []agents.MCPEntry) {
+	for _, e := range es {
+		line := "    " + e.Name + "  " + a.ui.Dim(e.Agent.Label()+" · "+e.Where())
+		if e.Token {
+			line += a.ui.Dim(" · " + i18n.T("mcp.legacy_token"))
+		}
+		a.ui.Println(line)
+	}
+}
+
+// sure asks before deleting something the person may still use (spec
+// §9.1): a question with a TTY, --yes without one (missing_flag otherwise).
+func (a *app) sure(question, needsYes string) (bool, error) {
+	if a.flags.yes {
+		return true, nil
+	}
+	if !a.ui.Interactive {
+		return false, a.missing(needsYes, "--yes")
+	}
+	return a.ui.Confirm(question, true)
 }
 
 // addMCP registers the MCP for each agent. A failure with one agent does not
 // stop the others: what is left to do is printed (and in the JSON).
-func (a *app) addMCP(list []agents.Agent, sc agents.Scope, slug string) []*agents.MCPResult {
+//
+// Older Rapibase servers of the same project (the instance's own MCP,
+// Connect's rapibase-<slug>) are replaced after a yes, or --yes without a
+// TTY. Without it the new one is not added, so the agent never gets the
+// same tools twice, and the error that comes back says to use --yes.
+func (a *app) addMCP(list []agents.Agent, sc agents.Scope, slug, sub string) ([]*agents.MCPResult, error) {
 	out := []*agents.MCPResult{}
+	var needYes error
 	for _, x := range list {
-		r, err := agents.AddMCP(agents.MCPOptions{
-			Agent: x, Scope: sc, Root: a.root(), AccountURL: strings.TrimRight(a.host, "/") + "/mcp",
-			Slug: slug, Interactive: a.ui.Interactive,
-		})
+		o := agents.MCPOptions{
+			Agent: x, Scope: sc, Root: a.root(), Cwd: a.cwd, AccountURL: a.accountMCP(),
+			Slug: slug, Sub: sub, Interactive: a.ui.Interactive,
+		}
+		var replaced []string
+		if legacy := agents.LegacyMCP(o); len(legacy) > 0 {
+			a.ui.Warn(i18n.T("mcp.legacy_found", x.Label(), len(legacy)))
+			a.printMCP(legacy)
+			ok, err := a.sure(i18n.T("mcp.legacy_confirm"), i18n.T("mcp.legacy_needs_yes", x.Label()))
+			if err != nil && cerr.As(err).Code != cerr.MissingFlag {
+				return out, err
+			}
+			if !ok {
+				out = append(out, &agents.MCPResult{Agent: x, Name: agents.ServerName, Scope: sc, Legacy: legacy})
+				if err != nil {
+					needYes = err
+				} else {
+					a.ui.Note(i18n.T("mcp.legacy_kept", x.Label()))
+				}
+				continue
+			}
+			removed, manual, err := agents.RemoveMCP(legacy)
+			for _, e := range removed {
+				replaced = append(replaced, e.Name)
+				a.ui.Success(i18n.T("mcp.removed", e.Name, e.Where()))
+			}
+			if len(manual) > 0 {
+				a.ui.Note(i18n.T("mcp.remove_manual"))
+				for _, m := range manual {
+					a.ui.Println("    " + a.ui.Cyan(m))
+				}
+			}
+			if err != nil {
+				a.ui.Warn(i18n.T("mcp.failed", x.Label(), err))
+			}
+		}
+		r, err := agents.AddMCP(o)
 		if r == nil {
 			a.ui.Warn(i18n.T("mcp.failed", x.Label(), err))
 			continue
 		}
+		r.Replaced = replaced
 		out = append(out, r)
 		switch {
 		case err != nil:
 			a.ui.Warn(i18n.T("mcp.failed", x.Label(), err))
+		case r.Unchanged && r.Name != agents.ServerName:
+			a.ui.Success(i18n.T("mcp.already_as", x.Label(), r.Name))
 		case r.Unchanged:
 			a.ui.Success(i18n.T("mcp.already", x.Label()))
 		case r.Registered:
@@ -347,11 +552,11 @@ func (a *app) addMCP(list []agents.Agent, sc agents.Scope, slug string) []*agent
 		if r.Login != "" {
 			a.ui.Note(i18n.T("mcp.login", a.ui.Cyan(r.Login)))
 		}
-		if r.Registered && !r.Unchanged && r.RestartNeeded {
+		if r.Registered && ((!r.Unchanged && r.RestartNeeded) || len(replaced) > 0) {
 			a.ui.Note(i18n.T("mcp.restart_" + string(x)))
 		}
 	}
-	return out
+	return out, needYes
 }
 
 // --- init (spec §7) ---
@@ -398,7 +603,9 @@ func (a *app) initCmd() *cobra.Command {
 		out["created"] = created
 
 		// 4. provisioning
-		if p, err = a.waitRunning(p); err != nil {
+		// waitRunning returns no project on error: keep p for the link
+		running, err := a.waitRunning(p)
+		if err != nil {
 			if e := cerr.As(err); e.Code == cerr.Provisioning {
 				// link anyway, so `status --wait` and a second init pick it up
 				_, _ = a.linkTo(p, force)
@@ -407,6 +614,7 @@ func (a *app) initCmd() *cobra.Command {
 			}
 			return nil, err
 		}
+		p = running
 		t := &target{Project: p, Source: srcLink}
 		out["project"] = t.view()
 
@@ -468,7 +676,16 @@ func (a *app) initCmd() *cobra.Command {
 				}
 			}
 			if len(list) > 0 && !noMCP {
-				out["mcp"] = a.addMCP(list, sc, p.Slug)
+				res, err := a.addMCP(list, sc, p.Slug, p.Subdomain)
+				out["mcp"] = res
+				if err != nil {
+					// older MCP servers of this project and no --yes: like the
+					// old skill, say it and finish the rest
+					e := cerr.As(err)
+					a.ui.Warn(e.Message)
+					a.ui.Note(i18n.T("mcp.legacy_retry"))
+					out["mcp_error"] = map[string]any{"code": e.Code, "message": e.Message, "hint": "rapibase mcp add --yes"}
+				}
 			}
 		}
 
@@ -510,7 +727,7 @@ func (a *app) initProject(me *api.Me, name, org, region string) (*api.Project, b
 		}
 		a.ui.Warn(i18n.T("project.linked_gone", link.Slug))
 	case name != "":
-		p, err := a.createProject(me, name, org, region)
+		p, err := a.createProject(me, name, org, region, false)
 		return p, err == nil, err
 	}
 	ps, err := a.listProjects()
@@ -523,35 +740,47 @@ func (a *app) initProject(me *api.Me, name, org, region string) (*api.Project, b
 		}
 		return nil, false, a.missing(i18n.T("init.need_project"), "--project", "--name").With("projects", choices(ps))
 	}
-	opts, idx := projectOptions(ps)
-	canCreate := me.CanCreate()
-	if canCreate {
-		opts = append([]ui.Option{{Label: i18n.T("init.create_new"), Hint: planLabel("free")}}, opts...)
-	}
-	if len(opts) == 0 {
-		return nil, false, cerr.New(cerr.Forbidden, i18n.T("create.no_scope")).With("action_url", me.Connection.URL)
-	}
-	def := 0
-	if !canCreate {
-		def = firstSelectable(opts)
-	}
-	i, err := a.ui.Select(i18n.T("init.ask_project"), opts, def)
-	if err != nil {
-		return nil, false, err
-	}
-	if canCreate {
-		if i == 0 {
-			p, err := a.createProject(me, "", org, region)
-			// the free project is taken: say so and offer the existing ones,
-			// without pushing to a paid plan
-			if e := cerr.As(err); err != nil && e.Code == cerr.PlanLimit && len(ps) > 0 {
-				a.ui.Warn(e.Message)
-				p, err := a.pickProject(ps, i18n.T("init.ask_existing"))
-				return p, false, err
+	// the menu comes back when creating is cancelled (Esc) or the plan
+	// doesn't allow it there, so another organization can be chosen
+	for {
+		opts, idx := projectOptions(ps)
+		canCreate := me.CanCreate()
+		if canCreate {
+			opts = append([]ui.Option{newProjectOption(orgChoices(me, ps))}, opts...)
+		}
+		if firstSelectable(opts) < 0 {
+			if !canCreate {
+				return nil, false, cerr.New(cerr.Forbidden, i18n.T("create.no_scope")).With("action_url", me.Connection.URL)
 			}
+			// no projects and nowhere to create one: the server says why
+			p, err := a.createProject(me, "", org, region, false)
 			return p, err == nil, err
 		}
-		i--
+		i, err := a.ui.Select(i18n.T("init.ask_project"), opts, firstSelectable(opts))
+		if err != nil {
+			return nil, false, err
+		}
+		if canCreate {
+			if i == 0 {
+				p, err := a.createProject(me, "", org, region, true)
+				if errors.Is(err, ui.ErrBack) {
+					continue
+				}
+				// not there (free one taken, Team without its plan or
+				// full): say why and choose again, without pushing to a
+				// paid plan (§6.3)
+				if err != nil {
+					if e := cerr.As(err); e.Code == cerr.PlanLimit || e.Code == cerr.Forbidden {
+						a.ui.Warn(e.Message)
+						org = ""
+						continue
+					}
+					return nil, false, err
+				}
+				return p, true, nil
+			}
+			i--
+		}
+		return &ps[idx[i]], false, nil
 	}
-	return &ps[idx[i]], false, nil
 }

@@ -335,7 +335,7 @@ func (a *app) servicesCmd() *cobra.Command {
 		}
 		fields := map[string]string{"source": "cli"}
 		if cmd.Flags().Changed("path") {
-			fields["path"] = mount
+			fields["path"] = unMSYS(mount)
 		}
 		if cmd.Flags().Changed("subdomain") {
 			fields["subdomain"] = fmt.Sprint(subdomain)
@@ -419,7 +419,7 @@ func (a *app) servicesCmd() *cobra.Command {
 	update.RunE = a.run(func(cmd *cobra.Command, args []string) (any, error) {
 		body := map[string]any{}
 		if cmd.Flags().Changed("path") {
-			body["path"] = upPath
+			body["path"] = unMSYS(upPath)
 		}
 		if cmd.Flags().Changed("subdomain") {
 			body["subdomain"] = upSub

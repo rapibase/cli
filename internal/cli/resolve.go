@@ -237,13 +237,14 @@ func projectOptions(ps []api.Project) ([]ui.Option, map[int]int) {
 	return opts, idx
 }
 
+// firstSelectable is the first option that can be chosen, or -1.
 func firstSelectable(opts []ui.Option) int {
 	for i, o := range opts {
-		if !o.Header {
+		if !o.Header && !o.Disabled {
 			return i
 		}
 	}
-	return 0
+	return -1
 }
 
 // writeLink writes .rapibase/project.json in the repo root (or the current

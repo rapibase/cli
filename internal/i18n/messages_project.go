@@ -53,8 +53,19 @@ var projectMessages = map[string][3]string{
 		"não há organização %q (as suas: %s)",
 	},
 	"create.ask_org": {"Organization", "Organización", "Organização"},
-	"org.personal":   {"personal", "personal", "pessoal"},
-	"plan.free":      {"Free", "Gratis", "Grátis"},
+	"create.free_taken": {
+		"you already used your free project: %s",
+		"ya usaste tu proyecto gratis: %s",
+		"você já usou seu projeto grátis: %s",
+	},
+	"create.in_org":  {"in %s", "en %s", "em %s"},
+	"create.in_team": {"in a Team", "en un Team", "em um Team"},
+	"org.limited": {
+		"your access is limited to your projects",
+		"tu acceso está limitado a tus proyectos",
+		"seu acesso está limitado aos seus projetos",
+	},
+	"plan.free": {"Free", "Gratis", "Grátis"},
 
 	// --- status of a project ---
 	"status.waiting": {

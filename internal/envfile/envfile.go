@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/rapibase/cli/internal/i18n"
 )
 
 // Order of the base variables in new files.
@@ -170,7 +172,7 @@ func merge(old []byte, vars map[string]string, order []string) []byte {
 		if out.Len() > 0 && !bytes.HasSuffix(out.Bytes(), []byte("\n\n")) {
 			out.WriteString("\n")
 		}
-		out.WriteString("# Rapibase (rapibase env pull). Never commit this file.\n")
+		out.WriteString("# " + i18n.T("env.file_header") + "\n")
 		for _, k := range missing {
 			out.WriteString(k + "=" + quote(vars[k]) + "\n")
 		}

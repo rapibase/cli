@@ -31,11 +31,14 @@ rapibase deploy            # or: rapibase deploy ./dist
 - SPA fallback: paths without an extension serve `index.html` (React Router and the like work).
 - The instance's admin dashboard is always available at `{base-url}/_/` (`rapibase open dashboard`): don't
   use `/_` as a route of your app.
-- The site's URL: `rapibase status --json` → `data.project.app_url`, or `rapibase open app`.
+- The site's URL: `rapibase status --json` → `data.project.app_url` (MCP: `get_project`), or
+  `rapibase open app`.
 - Staging: each environment is its own project. `rapibase deploy --project <staging project>` only when
   the person names that project.
 - MCP fallback: `create_site_upload` returns a one-time upload URL (valid 10 minutes) and the exact
-  command that sends the zip of the build; the answer is `201 {"release_id":"...","url":"..."}`.
+  command that sends the zip of the build; the answer is `201 {"release_id":"...","url":"..."}`. The zip
+  holds the build folder's contents, with `index.html` at its root: adjust the folder in the command if
+  the build isn't in `dist`.
 
 ## Testing is not deploying
 

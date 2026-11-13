@@ -205,8 +205,12 @@ func (a *app) deploysCmd() *cobra.Command {
 	return cmd
 }
 
-// raw prints a JSON response in human mode.
+// printRaw prints a JSON response in human mode. With --json it prints
+// nothing: the response goes inside the single final object.
 func (a *app) printRaw(raw json.RawMessage) {
+	if a.ui.JSON {
+		return
+	}
 	var v any
 	if json.Unmarshal(raw, &v) == nil {
 		a.ui.PrettyJSON(v)

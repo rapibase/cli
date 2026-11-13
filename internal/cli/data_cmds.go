@@ -217,8 +217,9 @@ func (a *app) printTable(cols []string, rows []map[string]any) {
 var apiMethods = map[string]bool{"GET": true, "POST": true, "PUT": true, "PATCH": true, "DELETE": true}
 
 func (a *app) apiCmd() *cobra.Command {
-	var method, data, contentType, output string
+	var method, data, contentType, output, jwt string
 	var forms []string
+	var anon bool
 	cmd := &cobra.Command{
 		Use:   "api [get|post|put|patch|delete] <path>",
 		Short: i18n.T("cmd.api.short"),
@@ -230,6 +231,9 @@ func (a *app) apiCmd() *cobra.Command {
 			// path es la carpeta dentro del bucket; el nombre sale del archivo
 			"rapibase api post /api/v1/storage/photos/upload -F file=@cat.png -F path=pets/",
 			"rapibase api get /api/v1/storage/photos/pets/cat.png -o cat.png",
+			// probar RLS: como visitante y como un usuario, sin ver ninguna clave
+			`rapibase api get "/api/v1/rest/products?page_size=5" --anon`,
+			`rapibase api get /api/v1/rest/orders --jwt "$USER_JWT"`,
 		),
 	}
 	cmd.Flags().StringVarP(&method, "method", "X", "", i18n.T("flag.api_method"))
@@ -237,6 +241,8 @@ func (a *app) apiCmd() *cobra.Command {
 	cmd.Flags().StringArrayVarP(&forms, "form", "F", nil, i18n.T("flag.api_form"))
 	cmd.Flags().StringVar(&contentType, "content-type", "", i18n.T("flag.api_content_type"))
 	cmd.Flags().StringVarP(&output, "output", "o", "", i18n.T("flag.api_output"))
+	cmd.Flags().BoolVar(&anon, "anon", false, i18n.T("flag.api_anon"))
+	cmd.Flags().StringVar(&jwt, "jwt", "", i18n.T("flag.api_jwt"))
 	cmd.RunE = a.run(func(cmd *cobra.Command, args []string) (any, error) {
 		// `api post <path>` (the spec's form) or `api <path> -X POST`
 		if len(args) == 2 {
@@ -245,9 +251,20 @@ func (a *app) apiCmd() *cobra.Command {
 			}
 			method, args = args[0], args[1:]
 		}
-		rest, err := apiPath(args[0])
+		rest, err := apiPath(unMSYSAPIPath(args[0]))
 		if err != nil {
 			return nil, err
+		}
+		// as a visitor (anon key) or as a user (anon key + their JWT): the
+		// control plane puts the keys, they never reach this terminal
+		var as []string
+		switch {
+		case anon && jwt != "":
+			return nil, cerr.New(cerr.Usage, i18n.T("api.anon_and_jwt"))
+		case anon:
+			as = []string{"X-Rapibase-As", "anon"}
+		case jwt != "":
+			as = []string{"X-Rapibase-As", "user", "X-Rapibase-User-JWT", strings.TrimPrefix(strings.TrimSpace(jwt), "Bearer ")}
 		}
 		if data != "" && len(forms) > 0 {
 			return nil, cerr.New(cerr.Usage, i18n.T("api.data_and_form"))
@@ -292,7 +309,7 @@ func (a *app) apiCmd() *cobra.Command {
 		if err != nil {
 			return nil, err
 		}
-		res, err := a.api.Raw(a.ctx, m, "/api/projects/"+t.IDString()+"/api/"+rest, body, true)
+		res, err := a.api.Raw(a.ctx, m, "/api/projects/"+t.IDString()+"/api/"+rest, body, true, as...)
 		if err != nil {
 			return nil, err
 		}
@@ -320,6 +337,12 @@ func (a *app) apiCmd() *cobra.Command {
 		}
 		out := map[string]any{"project": t.view(), "status": res.Status, "content_type": ct}
 		switch {
+		case anon:
+			out["as"] = "anon"
+		case jwt != "":
+			out["as"] = "user"
+		}
+		switch {
 		case output != "":
 			if err := os.WriteFile(output, res.Body, 0o644); err != nil {
 				return nil, err
@@ -342,8 +365,13 @@ func (a *app) apiCmd() *cobra.Command {
 }
 
 // isInstanceError tells the control plane's errors (with a code from spec
-// §4.3) from the instance's, which go back to the user as they are.
+// §4.3) from the instance's, which go back to the user as they are. The
+// control plane marks what it passed through (X-Rapibase-Upstream); without
+// the mark (an older control plane), the code decides (L8).
 func isInstanceError(res *api.Response) bool {
+	if res.Upstream() {
+		return true
+	}
 	var probe struct {
 		Code string `json:"code"`
 	}

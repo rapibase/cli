@@ -1,11 +1,16 @@
 # Webhooks (with conditions)
 
-- Webhooks live in the instance dashboard → Webhooks (`rapibase open dashboard`). Events
-  `INSERT:table` / `UPDATE:table` / `DELETE:table` or `TYPE:*`, payload
+- Webhooks live in the instance dashboard → Webhooks (`rapibase open dashboard`; MCP: `get_project` →
+  `dashboard_url`). **You can't create or edit them:** neither `rapibase api` nor the MCP tools reach the
+  dashboard's webhooks API (it takes a dashboard admin session, not the service key). The person creates
+  them in the dashboard; give them the event, the URL and the conditions to enter.
+- Events `INSERT:table` / `UPDATE:table` / `DELETE:table` or `TYPE:*`, payload
   `{id, event, table, timestamp, data, old_data}`, HMAC-SHA256 signature of the body in
-  `X-Webhook-Signature` (`sha256=<hex>`). They fire from REST, the dashboard and the MCP; inserts made
-  with direct SQL (`db.query` in functions, RPC, the SQL editor, `rapibase sql`, imports) do NOT fire
-  webhooks.
+  `X-Webhook-Signature` (`sha256=<hex>`).
+- What fires them: writes through REST (the app, `rapibase api`, the MCP's `api_*` tools), the dashboard
+  and the MCP's `insert_row` / `update_row` / `delete_row`. Writes made with direct SQL do NOT fire
+  webhooks: `rapibase sql`, the MCP's `execute_sql`, `db.query` / `db.exec` in functions, RPC, the SQL
+  editor, imports. To test a webhook, write the row through REST or `insert_row`.
 - New users: the `INSERT:auth_users` event arrives with every signup (email, Google, Apple, GitHub,
   Facebook, native login or created through the API). `data` is the public user (id, email,
   email_verified, full_name, provider, created_at…; `provider` is email, google, apple, github or
@@ -18,9 +23,8 @@
   `X-Webhook-Attempt` carries the attempt number. The dashboard's log shows the state and has "Resend now".
 - CONDITIONS per webhook: a list of `{column, op, value}` (ops: eq neq gt gte lt lte contains is_null
   not_null), ANDed together and evaluated against the row: it is only delivered if ALL of them hold. They
-  are set in the same dialog (or via `POST /api/dashboard/webhooks` with the `filter` field, which takes a
-  dashboard admin session, not the service key). Use them to receive only what matters instead of
-  filtering in the receiver.
+  are set in the same dialog, by the person. Use them to receive only what matters instead of filtering
+  in the receiver.
 - More complex logic (OR, calculations, querying other tables, calling another API): point the webhook's
   URL at a function of your own (`fn.http('name', handler, { public: true })` →
   `{base-url}/api/fn/name`, rapibase-functions skill), verify the `X-Webhook-Signature` there with the

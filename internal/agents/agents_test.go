@@ -52,16 +52,6 @@ func TestMergeServerKeepsOthersAndOrder(t *testing.T) {
 	}
 }
 
-func TestMergeServerConnectEntryCounts(t *testing.T) {
-	dir := t.TempDir()
-	p := filepath.Join(dir, "opencode.json")
-	_ = os.WriteFile(p, []byte(`{"mcp":{"rapibase-shop":{"type":"remote","url":"https://rapibase.com/mcp?project=shop"}}}`), 0o644)
-	entry := map[string]any{"type": "remote", "url": "https://rapibase.com/mcp?project=shop"}
-	if changed, err := mergeServer(p, "mcp", ServerName, entry, nil); err != nil || changed {
-		t.Errorf("an entry from Connect with the same URL counts as registered: %v %v", changed, err)
-	}
-}
-
 func TestMergeServerRefusesJSONC(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "opencode.json")

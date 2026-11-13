@@ -81,7 +81,7 @@ func (a *app) projectsCreateCmd() *cobra.Command {
 		if err != nil {
 			return nil, err
 		}
-		p, err := a.createProject(me, name, org, region)
+		p, err := a.createProject(me, name, org, region, false)
 		if err != nil {
 			return nil, err
 		}
@@ -98,8 +98,9 @@ func (a *app) projectsCreateCmd() *cobra.Command {
 var nameRe = regexp.MustCompile(`^[\p{L}\p{N}][\p{L}\p{N} _.-]{0,39}$`)
 
 // createProject creates a free project (or one covered by a Team). Paid
-// projects are created in the console (spec §6.3).
-func (a *app) createProject(me *api.Me, name, org, region string) (*api.Project, error) {
+// projects are created in the console (spec §6.3). With back, Esc in its
+// questions returns ui.ErrBack (init goes back to its project menu).
+func (a *app) createProject(me *api.Me, name, org, region string, back bool) (*api.Project, error) {
 	if !me.CanCreate() {
 		return nil, cerr.New(cerr.Forbidden, i18n.T("create.no_scope")).With("action_url", me.Connection.URL)
 	}
@@ -113,20 +114,28 @@ func (a *app) createProject(me *api.Me, name, org, region string) (*api.Project,
 		if !a.ui.Interactive {
 			return nil, a.missing(i18n.T("create.need_name"), "--name")
 		}
-		def := filepath.Base(a.cwd)
+		def := a.draftName
+		if def == "" {
+			def = filepath.Base(a.cwd)
+		}
 		if validName(def) != "" {
 			def = "my-app"
 		}
-		n, err := a.ui.Input(i18n.T("create.ask_name"), def, validName)
+		ask := a.ui.Input
+		if back {
+			ask = a.ui.InputBack
+		}
+		n, err := ask(i18n.T("create.ask_name"), def, validName)
 		if err != nil {
 			return nil, err
 		}
 		name = n
+		a.draftName = n
 	} else if msg := validName(name); msg != "" {
 		return nil, cerr.New(cerr.Usage, msg)
 	}
 
-	orgID, orgName, err := a.pickOrg(me, org)
+	orgID, orgName, err := a.pickOrg(me, org, back)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +153,11 @@ func (a *app) createProject(me *api.Me, name, org, region string) (*api.Project,
 			for _, r := range rs {
 				opts = append(opts, ui.Option{Label: r.ID, Hint: r.Name})
 			}
-			i, err := a.ui.Select(i18n.T("create.ask_region"), opts, 0)
+			sel := a.ui.Select
+			if back {
+				sel = a.ui.SelectBack
+			}
+			i, err := sel(i18n.T("create.ask_region"), opts, 0)
 			if err != nil {
 				return nil, err
 			}
@@ -165,13 +178,82 @@ func (a *app) createProject(me *api.Me, name, org, region string) (*api.Project,
 		return nil, e
 	}
 	a.projects = nil
+	a.draftName = ""
 	a.ui.Success(i18n.T("create.done", p.Slug))
 	return &p, nil
 }
 
+// orgChoice says whether a new project can go to an organization and what
+// its option shows: the free project lives in the personal account and is
+// one per person; in a Team the plan covers it (spec §6.3). It's a guess
+// from what this session sees: the server has the last word.
+type orgChoice struct {
+	org  api.Org
+	ok   bool
+	hint string
+}
+
+func orgChoices(me *api.Me, ps []api.Project) []orgChoice {
+	out := make([]orgChoice, 0, len(me.Orgs))
+	for _, o := range me.Orgs {
+		c := orgChoice{org: o, ok: true, hint: "Team"}
+		switch {
+		case o.Kind == "personal":
+			c.hint = planLabel("free")
+			for _, p := range ps {
+				if p.Plan == "free" && p.OrgID == o.ID && p.Status != "deleting" {
+					c.ok, c.hint = false, i18n.T("create.free_taken", p.Slug)
+					break
+				}
+			}
+		case o.Role == "limited":
+			c.ok, c.hint = false, i18n.T("org.limited")
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// newProjectOption is "Create a new one" in init's menu: free if the
+// personal account still can, else where it can go, else shown disabled
+// with the reason (never pushing to a paid plan).
+func newProjectOption(cs []orgChoice) ui.Option {
+	opt := ui.Option{Label: i18n.T("init.create_new"), Hint: planLabel("free")}
+	var ok []orgChoice
+	for _, c := range cs {
+		if c.ok {
+			ok = append(ok, c)
+		}
+	}
+	switch {
+	case len(cs) == 0:
+		// no organizations listed: the server decides
+	case len(ok) == 0:
+		opt.Disabled = true
+		opt.Hint = cs[0].hint
+		for _, c := range cs {
+			if c.org.Kind == "personal" {
+				opt.Hint = c.hint
+			}
+		}
+	default:
+		for _, c := range ok {
+			if c.org.Kind == "personal" {
+				return opt
+			}
+		}
+		opt.Hint = i18n.T("create.in_team")
+		if len(ok) == 1 {
+			opt.Hint = i18n.T("create.in_org", ok[0].org.Name)
+		}
+	}
+	return opt
+}
+
 // pickOrg: --org by id or name; by default the personal one; with a TTY and
-// Teams, it asks (spec §4.5.8).
-func (a *app) pickOrg(me *api.Me, org string) (int64, string, error) {
+// Teams, it asks (spec §4.5.8), with the organizations where it can't go
+// shown disabled.
+func (a *app) pickOrg(me *api.Me, org string, back bool) (int64, string, error) {
 	var personal *api.Org
 	for i := range me.Orgs {
 		if me.Orgs[i].Kind == "personal" {
@@ -192,23 +274,28 @@ func (a *app) pickOrg(me *api.Me, org string) (int64, string, error) {
 		return 0, "", cerr.New(cerr.Usage, i18n.T("create.bad_org", org, strings.Join(names, ", ")))
 	}
 	if len(me.Orgs) > 1 && a.ui.Interactive {
+		ps, _ := a.listProjects() // only to know if the free one is taken
+		cs := orgChoices(me, ps)
 		opts := []ui.Option{}
-		def := 0
-		for i, o := range me.Orgs {
-			hint := i18n.T("org.personal")
-			if o.Kind == "team" {
-				hint = "Team"
-			}
-			if o.Kind == "personal" {
+		def := -1
+		for i, c := range cs {
+			opts = append(opts, ui.Option{Label: c.org.Name, Hint: c.hint, Disabled: !c.ok})
+			if c.ok && (def < 0 || c.org.Kind == "personal") {
 				def = i
 			}
-			opts = append(opts, ui.Option{Label: o.Name, Hint: hint})
 		}
-		i, err := a.ui.Select(i18n.T("create.ask_org"), opts, def)
-		if err != nil {
-			return 0, "", err
+		// with none available, the server says why
+		if def >= 0 {
+			sel := a.ui.Select
+			if back {
+				sel = a.ui.SelectBack
+			}
+			i, err := sel(i18n.T("create.ask_org"), opts, def)
+			if err != nil {
+				return 0, "", err
+			}
+			return me.Orgs[i].ID, me.Orgs[i].Name, nil
 		}
-		return me.Orgs[i].ID, me.Orgs[i].Name, nil
 	}
 	if personal != nil {
 		return personal.ID, personal.Name, nil

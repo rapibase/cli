@@ -37,6 +37,34 @@ var baseMessages = map[string][3]string{
 	"help.global":   {"Global options", "Opciones globales", "Opções globais"},
 	"help.examples": {"Examples", "Ejemplos", "Exemplos"},
 	"help.more":     {"More at", "Más en", "Mais em"},
+	"help.env":      {"Environment variables", "Variables de entorno", "Variáveis de ambiente"},
+	"env.token": {
+		"personal token (rbpat_) for CI; wins over `rapibase login`",
+		"token personal (rbpat_) para CI; gana sobre `rapibase login`",
+		"token pessoal (rbpat_) para CI; vence o `rapibase login`",
+	},
+	"env.deploy_token": {
+		"deploy token (rbdep_): only deploy, deploys and services; project by numeric id",
+		"token de deploy (rbdep_): solo deploy, deploys y services; proyecto por id numérico",
+		"token de deploy (rbdep_): só deploy, deploys e services; projeto por id numérico",
+	},
+	"env.project": {
+		"project (slug or id); wins over .rapibase/project.json",
+		"proyecto (slug o id); gana sobre .rapibase/project.json",
+		"projeto (slug ou id); vence o .rapibase/project.json",
+	},
+	"env.file_header": {
+		"Rapibase (rapibase env pull). Never commit this file.",
+		"Rapibase (rapibase env pull). Nunca subas este archivo al repo.",
+		"Rapibase (rapibase env pull). Nunca suba este arquivo para o repositório.",
+	},
+	"env.lang":            {"language: es, en or pt", "idioma: es, en o pt", "idioma: es, en ou pt"},
+	"env.no_update_check": {"don't check for new versions", "no avisa de versiones nuevas", "não avisa de versões novas"},
+	"env.api_url": {
+		"control plane (by default rapibase.com)",
+		"control plane (por defecto rapibase.com)",
+		"control plane (por padrão rapibase.com)",
+	},
 
 	"help.group.start":   {"Start", "Empezar", "Começar"},
 	"help.group.project": {"Project", "Proyecto", "Projeto"},
@@ -100,6 +128,16 @@ var baseMessages = map[string][3]string{
 	// --- ui ---
 	"ui.choose":         {"Choose 1-%d", "Elige 1-%d", "Escolha 1-%d"},
 	"ui.invalid_choice": {"Not a valid option.", "No es una opción válida.", "Não é uma opção válida."},
+	"ui.keys": {
+		"↑↓ move · enter choose · type to filter",
+		"↑↓ moverte · enter elegir · escribe para filtrar",
+		"↑↓ mover · enter escolher · digite para filtrar",
+	},
+	"ui.keys_back":       {" · esc back", " · esc volver", " · esc voltar"},
+	"ui.keys_input_back": {"enter accept · esc back", "enter aceptar · esc volver", "enter aceitar · esc voltar"},
+	"ui.no_match":        {"nothing matches “%s”", "nada coincide con «%s»", "nada corresponde a «%s»"},
+	"ui.yes":             {"Yes", "Sí", "Sim"},
+	"ui.no":              {"No", "No", "Não"},
 
 	// --- auth ---
 	"auth.needs_login": {
@@ -148,9 +186,9 @@ var baseMessages = map[string][3]string{
 		"não foi possível iniciar o login: %s",
 	},
 	"auth.deploy_only": {
-		"RAPIBASE_DEPLOY_TOKEN only works for deploys; run `rapibase login` for the rest",
-		"RAPIBASE_DEPLOY_TOKEN solo sirve para deploys; corre `rapibase login` para lo demás",
-		"RAPIBASE_DEPLOY_TOKEN só serve para deploys; rode `rapibase login` para o resto",
+		"RAPIBASE_DEPLOY_TOKEN only works for deploy, deploys and services; for the rest use RAPIBASE_TOKEN or `rapibase login`",
+		"RAPIBASE_DEPLOY_TOKEN solo sirve para deploy, deploys y services; para lo demás usa RAPIBASE_TOKEN o `rapibase login`",
+		"RAPIBASE_DEPLOY_TOKEN só serve para deploy, deploys e services; para o resto use RAPIBASE_TOKEN ou `rapibase login`",
 	},
 
 	// --- login / logout / whoami ---

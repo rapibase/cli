@@ -23,6 +23,8 @@ type MCPOptions struct {
 	Root        string // repo (or folder) root
 	AccountURL  string // <control plane>/mcp
 	Slug        string // project to pin to (repo-level configs)
+	Sub         string // its subdomain: finds the instance's own MCP
+	Cwd         string // where the CLI runs (Claude Code's local scope may use it)
 	Interactive bool   // may run interactive logins (codex, hermes)
 }
 
@@ -41,6 +43,11 @@ type MCPResult struct {
 	Manual        string `json:"manual,omitempty"` // what the person still has to run or paste
 	Login         string `json:"login,omitempty"`  // command that completes the OAuth
 	RestartNeeded bool   `json:"restart_needed"`
+	// Replaced: older Rapibase servers of the same project that were removed
+	Replaced []string `json:"replaced,omitempty"`
+	// Legacy: the older servers that were left (no --yes, or the person said
+	// no); the new one is then not added, so the tools don't show up twice
+	Legacy []MCPEntry `json:"legacy,omitempty"`
 }
 
 // url pins repo-level configs to the project (?project=<slug>, spec
@@ -53,8 +60,16 @@ func (o MCPOptions) url(pinned bool) string {
 	return o.AccountURL
 }
 
-// AddMCP registers the Rapibase MCP in the agent's config.
+// AddMCP registers the Rapibase MCP in the agent's config. A server that
+// already points to the same URL, under any name, is left as it is and
+// reported with its own name.
 func AddMCP(o MCPOptions) (*MCPResult, error) {
+	if e := sameMCP(o); e != nil {
+		return &MCPResult{
+			Agent: o.Agent, Name: e.Name, URL: e.URL, Pinned: strings.Contains(e.URL, "?project="), Scope: e.Scope,
+			File: e.File, Registered: true, Unchanged: true,
+		}, nil
+	}
 	switch o.Agent {
 	case Claude:
 		return addClaude(o)
@@ -202,8 +217,7 @@ func addJSON(o MCPOptions, repoRel, userPath, key string, entry func(string) map
 }
 
 // mergeServer adds or updates key.name in a JSON file, keeping every other
-// server and the order of the keys. A server Connect registered under
-// rapibase-<slug> with the same URL counts as already there.
+// server and the order of the keys.
 func mergeServer(path, key, name string, entry map[string]any, newFileTop map[string]any) (bool, error) {
 	b, err := os.ReadFile(path)
 	if err != nil && !os.IsNotExist(err) {
@@ -228,12 +242,9 @@ func mergeServer(path, key, name string, entry map[string]any, newFileTop map[st
 	}
 	want, _ := json.Marshal(entry)
 	wantURL, _ := entry["url"].(string)
-	for _, k := range servers.keys {
-		if k != name && !strings.HasPrefix(k, name+"-") {
-			continue
-		}
+	if raw, ok := servers.get(name); ok {
 		var cur map[string]any
-		_ = json.Unmarshal(servers.vals[k], &cur)
+		_ = json.Unmarshal(raw, &cur)
 		if u, _ := cur["url"].(string); u == wantURL {
 			return false, nil
 		}
@@ -241,16 +252,21 @@ func mergeServer(path, key, name string, entry map[string]any, newFileTop map[st
 	servers.set(name, want)
 	sb, _ := servers.MarshalJSON()
 	top.set(key, sb)
+	return true, writeJSON(path, top)
+}
+
+// writeJSON writes an ordered object indented, the way the agents do.
+func writeJSON(path string, top *ordered) error {
 	out, _ := top.MarshalJSON()
 	var pretty bytes.Buffer
 	if err := json.Indent(&pretty, out, "", "  "); err != nil {
-		return false, err
+		return err
 	}
 	pretty.WriteByte('\n')
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return false, err
+		return err
 	}
-	return true, os.WriteFile(path, pretty.Bytes(), 0o644)
+	return os.WriteFile(path, pretty.Bytes(), 0o644)
 }
 
 // ordered is a JSON object that keeps its key order.
@@ -272,6 +288,20 @@ func (o *ordered) set(k string, v json.RawMessage) {
 		o.keys = append(o.keys, k)
 	}
 	o.vals[k] = v
+}
+
+func (o *ordered) del(k string) bool {
+	if _, ok := o.vals[k]; !ok {
+		return false
+	}
+	delete(o.vals, k)
+	for i, x := range o.keys {
+		if x == k {
+			o.keys = append(o.keys[:i], o.keys[i+1:]...)
+			break
+		}
+	}
+	return true
 }
 
 func (o *ordered) UnmarshalJSON(b []byte) error {

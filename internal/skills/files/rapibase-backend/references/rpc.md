@@ -1,8 +1,10 @@
 # RPC — Postgres functions
 
 ```bash
-# the JSON body maps to the function's named arguments
+# the JSON body maps to the function's named arguments (MCP: api_post)
 rapibase api post /api/v1/rpc/top_products --data '{"p_limit":10}'
+# as a visitor without a session: checks the GRANT below (401 without it)
+rapibase api post /api/v1/rpc/top_products --anon --data '{"p_limit":10}'
 ```
 
 The app sends the same thing: `POST /api/v1/rpc/top_products` with `apikey` (and the user's

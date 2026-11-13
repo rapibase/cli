@@ -1,7 +1,8 @@
 # REST CRUD — /api/v1/rest/{table}
 
 From the agent: `rapibase api` with the same path (MCP: the `api_*` tool of the method, `api_get`,
-`api_post`…). Both use the service key, so they bypass RLS.
+`api_post`…). Both use the service key, so they bypass RLS; `--anon` and `--jwt <token>` make
+`rapibase api` call as a visitor or as a signed-in user instead ([credentials.md](credentials.md)).
 
 ```bash
 # SELECT with filters: <column>.<op>=<value>  (op: eq neq gt gte lt lte like ilike is in)
@@ -11,6 +12,10 @@ rapibase api get "/api/v1/rest/products?page=1&page_size=50&order_by=created_at&
 rapibase api post /api/v1/rest/products --data '{"name":"X","price":9.99}'
 rapibase api patch /api/v1/rest/products/1 --data '{"price":14.99}'
 rapibase api delete /api/v1/rest/products/1
+
+# what a visitor / a signed-in test user gets (RLS applies)
+rapibase api get "/api/v1/rest/products?page_size=20" --anon
+rapibase api get /api/v1/rest/orders --jwt <token>
 ```
 
 From the app's code, the same paths with the app's keys:

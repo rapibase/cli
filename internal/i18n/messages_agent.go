@@ -107,6 +107,46 @@ var agentMessages = map[string][3]string{
 		"No se instalaron los skills. Para reemplazar el viejo: rapibase skill install --yes",
 		"Os skills não foram instalados. Para substituir o antigo: rapibase skill install --yes",
 	},
+	"cmd.skill.uninstall.short": {
+		"Remove the Rapibase skills",
+		"Quita los skills de Rapibase",
+		"Remove os skills do Rapibase",
+	},
+	"cmd.skill.uninstall.long": {
+		"Remove the Rapibase skills from this repo (every agent's folder, the old rapibase skill and the AGENTS.md line), or with --scope user from your home folder. It asks first; without a terminal it needs --yes.",
+		"Quita los skills de Rapibase de este repo (la carpeta de cada agente, el skill viejo rapibase y la línea de AGENTS.md), o con --scope user de tu carpeta personal. Pregunta antes; sin terminal necesita --yes.",
+		"Remove os skills do Rapibase deste repo (a pasta de cada agente, o skill antigo rapibase e a linha do AGENTS.md), ou com --scope user da sua pasta pessoal. Pergunta antes; sem terminal precisa de --yes.",
+	},
+	"flag.scope_remove": {
+		"where to look: project or local (this repo) or user (your home folder)",
+		"dónde buscar: project o local (este repo) o user (tu carpeta personal)",
+		"onde procurar: project ou local (este repo) ou user (sua pasta pessoal)",
+	},
+	"skill.none_found": {
+		"There are no Rapibase skills here",
+		"No hay skills de Rapibase aquí",
+		"Não há skills do Rapibase aqui",
+	},
+	"skill.found": {
+		"Rapibase skills found (%d):",
+		"Skills de Rapibase encontrados (%d):",
+		"Skills do Rapibase encontrados (%d):",
+	},
+	"skill.uninstall_confirm": {
+		"Remove them (%d)? Edits made to them are lost",
+		"¿Los quito (%d)? Se pierden los cambios que les hayas hecho",
+		"Removê-los (%d)? As alterações feitas neles se perdem",
+	},
+	"skill.uninstall_needs_yes": {
+		"Removing the Rapibase skills (%d) deletes them. Run again with --yes",
+		"Quitar los skills de Rapibase (%d) los borra. Vuelve a correrlo con --yes",
+		"Remover os skills do Rapibase (%d) os apaga. Rode de novo com --yes",
+	},
+	"skill.uninstalled": {
+		"Removed (%d). `rapibase skill install` puts them back",
+		"Quitados (%d). `rapibase skill install` los vuelve a poner",
+		"Removidos (%d). `rapibase skill install` os coloca de volta",
+	},
 
 	// --- mcp ---
 	"cmd.mcp.short": {"The Rapibase MCP for your agent", "El MCP de Rapibase para tu agente", "O MCP do Rapibase para o seu agente"},
@@ -120,9 +160,94 @@ var agentMessages = map[string][3]string{
 		"Registra el MCP de Rapibase en tu agente, sin secretos: el agente inicia sesión con OAuth la primera vez. Donde la config es por repo queda fijado al proyecto vinculado.",
 		"Registra o MCP do Rapibase no seu agente, sem segredos: o agente faz login com OAuth na primeira vez. Onde a config é por repo fica fixado no projeto vinculado.",
 	},
+	"cmd.mcp.remove.short": {
+		"Remove the Rapibase MCP from your agent",
+		"Quita el MCP de Rapibase de tu agente",
+		"Remove o MCP do Rapibase do seu agente",
+	},
+	"cmd.mcp.remove.long": {
+		"Remove the Rapibase MCP servers of this folder: the repo's configs and Claude Code's local scope, older per-project ones included. With --scope user, the ones in your home folder, Codex's and Hermes'. Give a name to remove only that one. It asks first; without a terminal it needs --yes.",
+		"Quita los servidores MCP de Rapibase de esta carpeta: las configs del repo y el scope local de Claude Code, incluidos los viejos por proyecto. Con --scope user, los de tu carpeta personal, Codex y Hermes. Con un nombre quita solo ese. Pregunta antes; sin terminal necesita --yes.",
+		"Remove os servidores MCP do Rapibase desta pasta: as configs do repo e o scope local do Claude Code, incluindo os antigos por projeto. Com --scope user, os da sua pasta pessoal, do Codex e do Hermes. Com um nome remove só esse. Pergunta antes; sem terminal precisa de --yes.",
+	},
+	"flag.agent_remove": {
+		"only this agent: claude, cursor, opencode, codex or hermes (repeatable; all by default)",
+		"solo este agente: claude, cursor, opencode, codex o hermes (se puede repetir; todos por defecto)",
+		"só este agente: claude, cursor, opencode, codex ou hermes (pode repetir; todos por padrão)",
+	},
+	"mcp.none_found": {
+		"There's no Rapibase MCP here",
+		"No hay MCP de Rapibase aquí",
+		"Não há MCP do Rapibase aqui",
+	},
+	"mcp.found": {
+		"Rapibase MCP servers found (%d):",
+		"Servidores MCP de Rapibase encontrados (%d):",
+		"Servidores MCP do Rapibase encontrados (%d):",
+	},
+	"mcp.remove_confirm": {
+		"Remove them (%d)?",
+		"¿Los quito (%d)?",
+		"Removê-los (%d)?",
+	},
+	"mcp.remove_needs_yes": {
+		"Removing the Rapibase MCP servers (%d) needs --yes",
+		"Quitar los servidores MCP de Rapibase (%d) necesita --yes",
+		"Remover os servidores MCP do Rapibase (%d) precisa de --yes",
+	},
+	"mcp.removed": {
+		"Removed %s (%s)",
+		"Quitado %s (%s)",
+		"Removido %s (%s)",
+	},
+	"mcp.remove_manual": {
+		"Couldn't remove it by itself; run or edit:",
+		"No se pudo quitar solo; corre o edita:",
+		"Não deu para remover sozinho; rode ou edite:",
+	},
+	"mcp.restart_after_remove": {
+		"Restart your agent so it stops loading them",
+		"Reinicia tu agente para que deje de cargarlos",
+		"Reinicie o seu agente para que pare de carregá-los",
+	},
+	"mcp.legacy_found": {
+		"%s already has %d older Rapibase MCP server(s) for this project:",
+		"%s ya tiene %d MCP viejo(s) de Rapibase para este proyecto:",
+		"%s já tem %d MCP antigo(s) do Rapibase para este projeto:",
+	},
+	"mcp.legacy_token": {
+		"keeps a key in plain text",
+		"guarda una clave en texto plano",
+		"guarda uma chave em texto puro",
+	},
+	"mcp.legacy_confirm": {
+		"Replace them with rapibase? If not, the agent gets the same tools twice",
+		"¿Los reemplazo por rapibase? Si no, el agente tiene las mismas herramientas dos veces",
+		"Substituí-los por rapibase? Se não, o agente fica com as mesmas ferramentas duas vezes",
+	},
+	"mcp.legacy_needs_yes": {
+		"%s has older Rapibase MCP servers for this project; replacing them removes them. Run again with --yes",
+		"%s tiene MCP viejos de Rapibase para este proyecto; reemplazarlos los quita. Vuelve a correrlo con --yes",
+		"%s tem MCP antigos do Rapibase para este projeto; substituí-los os remove. Rode de novo com --yes",
+	},
+	"mcp.legacy_kept": {
+		"Left the MCP of %s as it was: the new one wasn't added, so the tools don't show up twice",
+		"Dejé el MCP de %s como estaba: no agregué el nuevo, así las herramientas no aparecen dos veces",
+		"Deixei o MCP do %s como estava: não adicionei o novo, assim as ferramentas não aparecem duas vezes",
+	},
+	"mcp.legacy_retry": {
+		"The MCP was not added. To replace the old ones: rapibase mcp add --yes",
+		"No se agregó el MCP. Para reemplazar los viejos: rapibase mcp add --yes",
+		"O MCP não foi adicionado. Para substituir os antigos: rapibase mcp add --yes",
+	},
 	"mcp.failed":  {"MCP for %s: %v", "MCP para %s: %v", "MCP para %s: %v"},
 	"mcp.already": {"The MCP was already in %s", "El MCP ya estaba en %s", "O MCP já estava no %s"},
-	"mcp.added":   {"MCP added to %s (%s)", "MCP agregado a %s (%s)", "MCP adicionado ao %s (%s)"},
+	"mcp.already_as": {
+		"The MCP was already in %s, as %s",
+		"El MCP ya estaba en %s, como %s",
+		"O MCP já estava no %s, como %s",
+	},
+	"mcp.added": {"MCP added to %s (%s)", "MCP agregado a %s (%s)", "MCP adicionado ao %s (%s)"},
 	"mcp.manual": {
 		"To finish the MCP in %s, run or paste:",
 		"Para terminar el MCP en %s, corre o pega:",
@@ -130,9 +255,9 @@ var agentMessages = map[string][3]string{
 	},
 	"mcp.login": {"Log the MCP in with %s", "Inicia la sesión del MCP con %s", "Faça login no MCP com %s"},
 	"mcp.restart_claude": {
-		"Restart Claude Code so it loads the MCP (claude --continue keeps the conversation)",
-		"Reinicia Claude Code para que cargue el MCP (claude --continue mantiene la conversación)",
-		"Reinicie o Claude Code para carregar o MCP (claude --continue mantém a conversa)",
+		"Restart Claude Code so it loads the MCP (claude --continue keeps the conversation); approve rapibase if it asks, and log in once from /mcp",
+		"Reinicia Claude Code para que cargue el MCP (claude --continue mantiene la conversación); aprueba rapibase si te lo pide e inicia sesión una vez desde /mcp",
+		"Reinicie o Claude Code para carregar o MCP (claude --continue mantém a conversa); aprove rapibase se ele pedir e faça login uma vez em /mcp",
 	},
 	"mcp.restart_cursor": {
 		"Reload Cursor and enable rapibase in Settings → MCP",
@@ -208,7 +333,6 @@ var agentMessages = map[string][3]string{
 		"di qué proyecto usar (--project) o crea uno (--name)",
 		"diga qual projeto usar (--project) ou crie um (--name)",
 	},
-	"init.create_new":   {"Create a new one", "Crear uno nuevo", "Criar um novo"},
-	"init.ask_project":  {"Which project?", "¿Qué proyecto?", "Qual projeto?"},
-	"init.ask_existing": {"Use one of yours:", "Usa uno de los tuyos:", "Use um dos seus:"},
+	"init.create_new":  {"Create a new one", "Crear uno nuevo", "Criar um novo"},
+	"init.ask_project": {"Which project?", "¿Qué proyecto?", "Qual projeto?"},
 }
